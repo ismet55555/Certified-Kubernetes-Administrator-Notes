@@ -381,6 +381,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
 - Usage: `kubectl [COMMAND] [OBJECT TYPE] [OBJECT NAME] [FLAGS]` 
 
 - **Command: `kubectl api-resources`**
+    - List all available Kubernetes resource objects for current Kubernetes version.
 
 - **Command: `kubectl get`**
     - Get a list of available specified objects
@@ -392,6 +393,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - `-l, --selector` - Filter results by label (i.e. `key1=value1,key2=value2`)
     - Examples:
         - `kubectl get pods`
+        - `kubectl get pv`
 
 - **Command: `kubectl describe`**
     - Show detailed information of a specific resource
