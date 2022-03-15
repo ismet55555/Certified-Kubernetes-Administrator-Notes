@@ -26,16 +26,16 @@
 
 - Manages the cluster
 - Components
-    - kube-api-server
+    - **kube-api-server**
        - Serves Kubernetes API
        - Primary interface to control plane and cluster itself
-    - etcd
+    - **etcd**
         - Backend data store for Kubernetes cluster
-    - kube-scheduler
+    - **kube-scheduler**
         - Selects an available node in the cluster on which to run containers
-    - kube-controller-manager
+    - **kube-controller-manager**
         - Runs collection of multiple controller utilities in a single process
-    - cloud-controller-manager
+    - **cloud-controller-manager**
         - Interface between Kubernetes and various cloud platforms
         - Only used when using with cloud-based resources (i.e. GCP, AWS, Azure)
 
@@ -43,15 +43,15 @@
 
 - Machines where the containers managed by the cluster are run
 - Components
-    - kubelet
+    - **kubelet**
         - Kubernetes agent that runs on a node
         - Communicates with control plane
         - Handles reporting container status and other data to control plane
-    - Container runtime
+    - **Container runtime**
         - Not build into Kubernetes. Separate software.
         - Responsible for running containers on machine
         - Kubernetes supports multiple, i.e. Docker, containerd
-    - kube-proxy
+    - **kube-proxy**
         - Network proxy that runs on each node
         - Provides network between containers and cluster
 
@@ -72,6 +72,10 @@
 
 
 # Installation
+
+The following is a way of installing and setting up Kubernetes. However, you can see other
+methods here. The different method depend on how and where Kubernetes is set up.
+    - https://itnext.io/kubernetes-installation-methods-the-complete-guide-1036c860a2b3
 
 ## containerd Installation (if needed)
 
@@ -247,6 +251,10 @@ Interface and make it easier to use Kubernetes.
     - Allows to automatically set up local single-node Kubernetes cluster
     - Great for quick development purposes
 
+- `kind`
+    - Run local Kubernetes cluster using Docker
+    - Can be used for local cluster testing
+
 - `helm`
     - Templating and package management for Kubernetes objects
     - Manage your own templates (known as charts)
@@ -378,7 +386,7 @@ and manage cluster resources, and view logs.
 
 Docs: https://kubernetes.io/docs/reference/kubectl/
 
-- Usage: `kubectl [COMMAND] [OBJECT TYPE] [OBJECT NAME] [FLAGS]` 
+- Usage: `kubectl [COMMAND] [OBJECT TYPE] [OBJECT NAME] [FLAGS]`
 
 - **Command: `kubectl api-resources`**
     - List all available Kubernetes resource objects for current Kubernetes version.
@@ -420,7 +428,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
 - **Command: `kubectl delete`**
     - Delete resources from cluster
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#delete
-    - Can specify objects to delete
+    - Can specify objects to delete form:
         - Name
         - stdin
         - resources and names (i.e. `pod myPod1 myPod2`)
@@ -444,7 +452,95 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - `kubectl exec some-pod -c python-container -- printenv`
         - `kubectl exec deploy/myDeployment -- date` - Using first pod, first container, in deployment
         - `kubectl exec svc/myService -- ls /dir` - Using first pod, first container, in service
-    
+
+
+## Declarative vs. Imperative Methods
+
+- Declarative
+    - Define objects using data structures such as YAML or JSON (predefined)
+    - Example:
+        - `kubectl apply -f deployment.yml`
+
+- Imperative
+    - Define objects using `kubectl` commands and flags.
+    - Some people find imperative commands faster.
+    - Could be faster in the exam sometimes
+    - Example:
+        - `kubectl create deployment myi-deploytment image=nginx`
+
+
+## `kubectl` Tricks
+
+- Create a sample YAML file of the resource to modify later using `--dry-run`
+    - Example: Console out the YAML file for a deployment
+        - `kubectl create deployment my-deployment --image=nginx --dry-run=client -o yaml`
+
+- Record a command using `--record` to add to the object's describe description.
+    - Allows for later review of object
+    - This will appear when using `describe` under `Annotations:`
+    - Example: `kubectl scale development my-development replicas=5 --record`
+    - **NOTE**: This feature will be removed in future Kubernetes version
+
+- Use sample/template resource YAML configuration as a base, then add to it
+    - Sample/templates can be found in the official Kubernetes docs.
+
+
+## Role-Based Access Control (RBAC) Authorization
+
+Role-based access control (RBAC) is a method of regulating access to resources beased on
+the roles of individual users within the organization. Essentially, what users are allowed
+to do and access within the cluster.
+
+Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+
+
+### RBAC Objects
+
+1. *Role*
+    - Sets permissions within a particular namespace
+    - Can specify `namespace`
+    - Example:
+        - ``
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: Role
+            metadata:
+              namespace: default  # <-- Note namespace defined
+              name: pod-reader
+            rules:
+            - apiGroups: [""]     # <-- "" indicates the core API group
+              resources: ["pods", "pods/logs"]
+              verbs: ["get", "watch", "list"]
+          ``
+
+2. *ClusterRole*
+    - Not namespace specific, cluster-wide
+    - Do not need to specify `namespace`
+
+3. *RoleBinding*
+    - Grants permission defined in a role to a user or set of users
+    - Holds a list of subjects (users, groups, or service accounts)
+    - Holds reference to the role being granted
+    - Can reference and Role in the same namespace
+    - Can also reference a ClusterRole
+    - Example:
+        - ``
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: read-pods     # <-- Has to match the Role metadata.name
+              namespace: default
+            subjects:             # <-- You can specify more than one "subject"
+            - kind: User
+              name: jane          # <-- "name" is case sensitive
+              apiGroup: rbac.authorization.k8s.io
+            roleRef:              # <-- "roleRef" specifies the binding to a Role/ClusterRole
+              kind: Role          # <-- This must be Role/ClusterRole
+              name: pod-reader # this must match the name of the Role/ClusterRole
+              apiGroup: rbac.authorization.k8s.io
+            ``
+
+4. *ClusterRoleBinding*
+    - To bind a ClusterRole to all namespaces, use ClusterRoleBinding
 
 
 
