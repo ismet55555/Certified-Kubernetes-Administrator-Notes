@@ -379,6 +379,9 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
 
 
 
+
+
+
 # Object Management
 
 Object management is done with `kubectl` CLI tool used to deploy applications, inspect
@@ -401,7 +404,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - `-l, --selector` - Filter results by label (i.e. `key1=value1,key2=value2`)
     - Examples:
         - `kubectl get pods`
-        - `kubectl get pv`
+        - `kubectl get pv -o wide`
 
 - **Command: `kubectl describe`**
     - Show detailed information of a specific resource
@@ -446,7 +449,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#exec
     - Great for troubleshooting
     - Raw terminal mode:
-        - `kubectl exect <POD NAME> -c <CONTAINER> -i -t -- bash`
+        - `kubectl exec <POD NAME> -c <CONTAINER> -i -t -- bash`
     - Examples:
         - `kubectl exec some-pod -- echo "yo"` - Using first container in pod
         - `kubectl exec some-pod -c python-container -- printenv`
@@ -487,7 +490,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
 
 ## Role-Based Access Control (RBAC) Authorization
 
-Role-based access control (RBAC) is a method of regulating access to resources beased on
+Role-based access control (RBAC) is a method of regulating access to resources based on
 the roles of individual users within the organization. Essentially, what users are allowed
 to do and access within the cluster.
 
@@ -504,10 +507,10 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
             apiVersion: rbac.authorization.k8s.io/v1
             kind: Role
             metadata:
-              namespace: default  # <-- Note namespace defined
+              namespace: default    # <-- Note namespace defined
               name: pod-reader
             rules:
-            - apiGroups: [""]     # <-- "" indicates the core API group
+            - apiGroups: [""]       # <-- "" indicates the core API group
               resources: ["pods", "pods/logs"]
               verbs: ["get", "watch", "list"]
           ``
@@ -527,20 +530,194 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
             apiVersion: rbac.authorization.k8s.io/v1
             kind: RoleBinding
             metadata:
-              name: read-pods     # <-- Has to match the Role metadata.name
+              name: read-pods       # <-- Has to match the Role metadata.name
               namespace: default
-            subjects:             # <-- You can specify more than one "subject"
+            subjects:               # <-- You can specify more than one "subject"
             - kind: User
-              name: jane          # <-- "name" is case sensitive
+              name: jane            # <-- "name" is case sensitive
               apiGroup: rbac.authorization.k8s.io
-            roleRef:              # <-- "roleRef" specifies the binding to a Role/ClusterRole
-              kind: Role          # <-- This must be Role/ClusterRole
-              name: pod-reader # this must match the name of the Role/ClusterRole
+            roleRef:                # <-- "roleRef" specifies the binding to Role/ClusterRole
+              kind: Role            # <-- This must be Role/ClusterRole
+              name: pod-reader      # <-- This must match the name of Role/ClusterRole
               apiGroup: rbac.authorization.k8s.io
             ``
 
 4. *ClusterRoleBinding*
     - To bind a ClusterRole to all namespaces, use ClusterRoleBinding
+
+
+### User Permissions
+
+
+### Working With Permissions
+
+- Get all roles defined in a specific namespace
+    - `kubectl get role --namespace <NAMESPACE>`
+
+- Apply a role or role binding
+    - `kubectl apply -f <ROLE FILE>`
+
+- Check if user has certain access
+    - `kubectl get pods --namespace <NAMESPACE> --kubeconfig <USER CONFIG>`
+
+- Check permissions as current user
+
+    - Example: Check to see if I can do everything in my current namespace ("*" means all)
+        - `kubectl auth can-i '*' '*'`
+
+    - Example: Check to see if I can create pods in any namespace
+        - `kubectl auth can-i create pods --all-namespaces`
+
+    - Example: Check to see if I can list deployments in my current namespace
+        - `kubectl auth can-i list deployments.extensions`
+
+- Check permissions as someone else
+
+    - Example: Check if `john.blah` can create deployments
+        - `kubectl auth can-i create deployments --namespace default --as john.blah`
+
+
+
+## Service Accounts
+
+Service account provides an identity for processes that run in a Pod.
+Users are authenticated to Kubernetes API with User Accounts, but processes in containers inside Pods
+are authenticated a Service Accounts.
+
+- Service accounts exist within namespaces
+- Can use RBAC objects to control service accounts
+- Can bind service accounts with ClusterRoles or ClusterRoleBindings to provide access
+
+- Get/list service accounts
+    - `kubectl get sa`
+
+- Creating service accounts
+    - `kubectl create -f <CONFIG FILE>`
+    - `kubectl create sa <NAME> -n <NAMESPACE>`
+
+
+
+
+
+## Inspecting Resource Usage
+
+Kubernetes Metrics Server
+- Need add-on to collect and provide metrics data about resources, pods, and containers
+- Once a metrics add-on is installed, can use `kubectl top` to view data about resource usage
+  in pods and nodes.
+    - `kubectl top pod --sort-by <JSONPATH> --selector <SELECTOR>`
+    - Example:
+        - `kubectl top pod --sort-by cpu`
+
+- Can view resource usage by node
+    - `kubectl top node`
+
+- Checking to see if metrics server is running and responsive
+    - `kubectl get --raw /apis/metrics.k8s.io/`
+
+
+
+
+
+
+# Pods and Containers
+
+## Application Configuration
+
+Passing dynamic values to running applications/containers at runtime
+
+Ways of doing this:
+
+1. **ConfigMaps**
+    - Docs: https://kubernetes.io/docs/concepts/configuration/configmap/
+    - Store *non-confidential* data in key-value pair format
+    - Not designed for large data (1MB max)
+    - Pods and ConfigMaps must be in the same namespace
+    - Multiple pods can reference the same ConfigMap
+    - Updates to ConfigMaps reflect in pod that consume it
+        - Note: ConfigMaps consumed as env. vars are not updated automatically (require pod restart)
+    - ConfigMaps can be immutable, once created cannot be changed
+    - Pods can consume ConfigMaps with the following:
+        1. Container Environmental variables
+            - Example:
+                - ``
+                    kind: Pod
+                    ...
+                    spec:
+                      containers:
+                        - ...
+                          env:
+                            - name: MY_ENV_VAR
+                              valueFrom:
+                                configMapKeyRef:
+                                  name: my-configmap
+                                  key: myKey
+                    ...
+                   ``
+        2. Container command-line arguments
+        3. Configuration files in a read-only volume
+            - Top level key will be the filename
+            - Sub level keys will be placed inside the file
+            - Example:
+                - ``
+                    kind: Pod
+                    ...
+                    spec:
+                      volumes:
+                        - name: config-vol
+                          configMap:
+                            name: my-configmap
+                          ...
+                  ``
+    - Example ConfigMap definition:
+        - ``
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: app-config
+              namespace: default
+            data:
+              key1: value1
+              key2: value2
+              key3:
+                subkey:
+                  more_keys: data
+                  even_more: more data
+              key4: |
+                You can have
+                mulit-line
+                data.
+            immutable: false
+          ``
+
+2. **Secrets**
+    - Docs: https://kubernetes.io/docs/concepts/configuration/secret/
+    - Object that has small amount of *sensitive data* (password, token, key, etc)
+    - Protected from creating, viewing, or editing pods
+    - Not designed for large data (1MB max)
+    - NOTE: By default, secrets are stored un-encrypted in data store (etcd)
+    - When creating a secret using YAML file, must base-64 encode
+        - When read by pod, it will be decoded
+        - Example: `echo -n "some secret" | base64`
+    - Pods can use secrets
+        1. As files in a volume mounted to the container
+        2. Container environmental variable
+        3. Image pull authentication to authenticate to image registry
+    - Example Secret definition:
+        - ``
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: my-secret
+            type: Opaque
+            data:
+                username: user
+                password: mypass
+           ``
+    - Can load a secret from a file with declarative command
+        - `kubectl create secret generic my-secret --from-file <LOCAL FILENAME>`
+
+
 
 
 
