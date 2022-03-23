@@ -696,7 +696,7 @@ Ways of doing this:
     - Protected from creating, viewing, or editing pods
     - Not designed for large data (1MB max)
     - NOTE: By default, secrets are stored un-encrypted in data store (etcd)
-    - When creating a secret using YAML file, must base-64 encode
+    - When creating a secret using YAML file, *must base-64 encode*
         - When read by pod, it will be decoded
         - Example: `echo -n "some secret" | base64`
     - Pods can use secrets
@@ -719,6 +719,48 @@ Ways of doing this:
 
 
 
+## Managing Container Resources
+
+- **Resource Requests**
+    - Define the amount of resources (CPU or memory) a container expected to have
+    - Kubernetes scheduler will use this request to place pods in proper nodes
+      with available resources
+    - Containers are allowed to use more or less than the resource request
+    - If request is much larger than any node can provide, pod can stay stuck in "Pending" status
+    - NOTE: Memory is specified in Bytes, CPU is specified in CPU or millicpu units
+        - 1 physical/virtual CPU core = 1 CPU
+        - 0.5 CPU = 500m
+    - Example
+        - ``
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: my-pod
+            spec:
+              containers:
+                - name: busybox
+                  image: busybox
+                  resources:
+                    requests:
+                      cpu: "250m"
+                      memory: "128Mi"
+          ``
+
+- **Resource Limits**
+    - Hard/Enforced resource limit for container
+    - Container runtime will enforce this limit
+    - Some container runtime terminate container processes attempting to use more than allowed resources
+        - For example, Docker will throttle CPU to a value, while kill processes exceeding memory limit
+    - Example:
+        - ``
+            ...
+            resources:
+              limits:
+                cpu: "250m"
+                memory: "128Mi"
+          ``
+
+## Monitoring Container Health with Probes
 
 
 
