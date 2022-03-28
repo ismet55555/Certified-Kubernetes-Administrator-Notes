@@ -9,7 +9,10 @@
 
 - Kubernetes 1.23
 - Ubuntu 20.04
--
+- Terminal
+    - VIM v???
+    - tmux?
+
 
 
 # Basics
@@ -46,11 +49,11 @@
     - **kubelet**
         - Kubernetes agent that runs on a node
         - Communicates with control plane
-        - Handles reporting container status and other data to control plane
+        - Handles reporting /container status and other data to control plane
     - **Container runtime**
         - Not build into Kubernetes. Separate software.
         - Responsible for running containers on machine
-        - Kubernetes supports multiple, i.e. Docker, containerd
+        - Kubernetes supports multiple, i.e. Docker, containerd, etc.
     - **kube-proxy**
         - Network proxy that runs on each node
         - Provides network between containers and cluster
@@ -68,7 +71,9 @@
     - Primary node agent that runs on each Kubernetes node
     - Can register node with the API server
     - Applies, creates, updates, and destroys containers on a node
+    - CAN BE USED BY ITSELF AS CLI TOOL??
 - More ...
+    - HYPERLINK ???
 
 
 # Installation
@@ -77,9 +82,9 @@ The following is a way of installing and setting up Kubernetes. However, you can
 methods here. The different method depend on how and where Kubernetes is set up.
     - https://itnext.io/kubernetes-installation-methods-the-complete-guide-1036c860a2b3
 
-## containerd Installation (if needed)
+## `containerd` Installation (if needed)
 
-Perform these steps on both control and worker nodes
+Perform these steps on both control and worker nodes. The following is on a Debian-based system.
 
 - Load needed kernel modules (ensures when system starts up, modules will be enables)
     - ``
@@ -120,10 +125,10 @@ Perform these steps on both control and worker nodes
 
 Perform these steps on both control and worker nodes.
 
-- Disable system swap memory
+- Disable system swap memory. WHY???
     - `sudo swapoff -a`
 
-- Check system fstab file for any entries that will turn swap back on
+- Check system `fstab` file for any entries that will turn swap back on
     - `sudo cat /etc/fstab`
 
 - Install dependencies
@@ -132,17 +137,18 @@ Perform these steps on both control and worker nodes.
 - Add GPG key for the Kubernetes repository
     - `curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -`
 
-- Setup the Kubernetes repository entry
+- Setup the Kubernetes repository entry in `apt`
     - ``
         cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
         deb https://apt.kubernetes.io/ kubernetes-xenial main
         EOF
       ``
 
-- Get newly added repository information
+- Fetch newly added repository information
     - `sudo apt-get update`
 
-- Install Kubernetes packages (note version)
+- Install Kubernetes tools `(note the version)`
+    - List of kubernetes versions: https://kubernetes.io/releases/
     - `sudo apt-get install -y kubelet=1.23.0-00 kubeadm=1.23.0-00 kubectl=1.23.0-00`
 
 - Prevent automatic updating of Kubernetes packages for more control
@@ -155,28 +161,28 @@ Perform these steps on the control node.
 
 - Initialize the cluster
     - `sudo kubeadm init --pod-network-cidr 192.168.0.0/16 --kubernetes-version 1.23.0`
-    - Will provide a set of commands for further setup
+    - Running this will provide a set of commands for further setup
 
-- From the previous command output
+- From the previous command output, run the following
     - `mkdir -p $HOME/.kube`
     - `sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config`
     - `sudo chown $(id -u):$(id -g) $HOME/.kube/config`
 
-- Verify cluster is working
+- Verify clusters is working
     - `kubectl get nodes`
 
-A this point the cluster is running, however it is in a `NotRead` status, because networking
-has not been configured yet. For this we need a networking plugin.
+A this point the cluster is running, however it is in a `NotReady` status, because networking
+has not been configured yet. For this we need a seperate networking plugin.
 
-- Setting up Calico networking and network security plugin
+- Setting up Calico networking and network security plugin via a remote YAML file
     - https://projectcalico.docs.tigera.io/about/about-calico
     - `kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml`
 
-- Get a node join command
+- Get a node join command to use on nodes to add to cluster
     - `kubeadm token create --print-join-command`
     - Copy the resulting output
 
-Run the following command on each Kubernetes token. Make sure to run as `sudo`:w
+Run the following command on each Kubernetes node. Make sure to run as `sudo`
 
 - `sudo kubeadm join <REST OF COMMAND>`
 
@@ -204,6 +210,7 @@ Docs: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespac
     - Example: `kubectl get pods --namespace my-namespace`
 
 - Can specify to look at all namespaces with `--all-namespaces`
+    - Can be slow to complete
     - Example `kubectl get pods --all-namespaces`
 
 - Create a custom namespace
@@ -217,29 +224,30 @@ Docs: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespac
 
 # Cluster Management
 
-# High Availability
+## High Availability
 
 - Need multiple control plane nodes
-    - Each has instance of `kube-api-server`
+    - Each control plane node has instance of `kube-api-server`
 
-- Design Pattern: Load Balancer
-    - All control plane nodes communicate with a load balancer
-    - Load balancer communicates with worker nodes with `kubelet`
+- Design Patterns
+    - Load Balancer
+        - All control plane nodes communicate with a load balancer
+        - Load balancer communicates with worker nodes with `kubelet`
 
-- Design Pattern: Stacked etcd
-    - etcd runs on the same nodes as control plane components
-    - Control planes have its own etcd instance
-    - Clusters that are set up using `kubeadm` use this design pattern
+    - Stacked `etcd`
+        - `etcd` runs on the same nodes as control plane components
+        - Control planes have its own `etcd` instance
+        - Clusters that are set up using `kubeadm` use this design pattern
 
-- Design Pattern: External etcd
-    - etcd runs on complete separate nodes apart from the control plane
-    - Can have any number of control plane instances, and any number of etcd nodes
+    - External `etcd`
+        - `etcd` runs on complete separate nodes apart from the control plane
+        - Can have any number of control plane instances, and any number of `etcd` nodes
 
 
 
 ## Management Tools
 
-Interface and make it easier to use Kubernetes.
+Interface and make it easier to setup or use Kubernetes.
 
 - `kubectl`
     - Main method for Kubernetes
@@ -292,51 +300,52 @@ These commands are run on the control plane node.
 
 ### Control Plane Node
 
-1. Drain node
-    - `kubectl drain <NODE NAME> --ignore-daemonsets`
+1. Drain node, putting it out of cluster service
+    - `kubectl drain <CONTROL PLANE NODE NAME> --ignore-daemonsets`
 
-2. Upgrade `kubeadm`
+2. Upgrade `kubeadm` CLI tool
     - `sudo apt-get update && sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00`
 
-3. Plan the upgrade
+3. Plan the cluster upgrade
     - `sudo kubeadm upgrade plan v1.22.2`
 
-4. Apply the upgrade
+4. Apply the cluster upgrade
     - `sudo kubeadm upgrade apply -y v1.22.2`
 
-5. Upgrade `kubelet` and `kubectl`
+5. Upgrade `kubelet` and `kubectl` CLI tools
     - `sudo apt-get install -y --allow-change-held-packages kubelet=1.22.2-00 kubectl=1.22.2-00`
     - `sudo systemctl daemon-reload`
     - `sudo systemctl restart kubelet`
 
-6. Uncordon the node
-    - `kubectl uncordon k8s-control`
+6. Uncordon the node, putting it back into cluster service
+    - `kubectl uncordon <CONTROL PLANE NODE NAME`
 
 
 ### Worker Node
 
-1. Drain node
+1. Drain node, putting it out of cluster services
     - *This command is run on the control plane node*
-    - `kubectl drain <NODE NAME> --ignore-daemonsets`
+    - `kubectl drain <WORKER NODE NAME> --ignore-daemonsets`
     - Same as the control plane node command for draining
     - May have to use `--force`
 
-2. Upgrade `kubeadm`
+2. Upgrade `kubeadm` CLI tool
     - `sudo apt-get update && sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00`
 
 3. Upgrade the `kubelet` configuration
     - `sudo kubeadm upgrade node`
 
-4. Upgrade `kubelet` and `kubectl`
+4. Upgrade `kubelet` and `kubectl` CLI tools
 
-5. Uncordon the node
+5. Uncordon the node, putting it back into cluster service
     - *This command is run on the control plane node*
+    - `kubectl uncordon <WORKER PLANE NODE NAME`
 
 
 
-## Backing up and Restoring Etcd Cluster Data
+## Backing up and Restoring `etcd` Cluster Data
 
-etcd is the backend key-value data storage solution for Kubernetes cluster.
+`etcd` is the backend key-value data storage solution for Kubernetes cluster.
 All Kubernetes objects, applications, and configurations are stored in etcd.
 
 - etcd website: https://etcd.io/
@@ -381,7 +390,6 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
 
 
 
-
 # Object Management
 
 Object management is done with `kubectl` CLI tool used to deploy applications, inspect
@@ -407,7 +415,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - `kubectl get pv -o wide`
 
 - **Command: `kubectl describe`**
-    - Show detailed information of a specific resource
+    - Show detailed and human readable information of a specific resource
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#describe
     - Examples:
         - `kubectl describe pods/nginx`
@@ -424,9 +432,10 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
 - **Command: `kubectl apply`**
     - Will create a new object or modify an existing one
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply
+    - Will not throw error if object exists
     - Examples:
         - `kubectl apply -f pod.yaml`
-        - `kubectl apply -k my-dir/` - Will look into `my-dir` directory for resource configs
+        - `kubectl apply -k my-dir/` - Will look into `my-dir` directory for all resource configs
 
 - **Command: `kubectl delete`**
     - Delete resources from cluster
@@ -437,7 +446,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - resources and names (i.e. `pod myPod1 myPod2`)
         - resources and label selector (i.e. `-l name=myLabel`)
     - Some options:
-        - `--all` - Delete all pods in current namespace
+        - `--all` - Delete all specified resources in current namespace
         - `--now` - Immediate shutdown, minimal delay
         - `--force` - Bypass graceful deletion
     - Examples:
@@ -448,7 +457,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
     - Execute a command in a container
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#exec
     - Great for troubleshooting
-    - Raw terminal mode:
+    - Raw terminal interactive mode inside container:
         - `kubectl exec <POD NAME> -c <CONTAINER> -i -t -- bash`
     - Examples:
         - `kubectl exec some-pod -- echo "yo"` - Using first container in pod
@@ -467,22 +476,25 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
 - Imperative
     - Define objects using `kubectl` commands and flags.
     - Some people find imperative commands faster.
-    - Could be faster in the exam sometimes
+    - Can be faster in the exam sometimes!
     - Example:
         - `kubectl create deployment myi-deploytment image=nginx`
 
 
 ## `kubectl` Tricks
 
-- Create a sample YAML file of the resource to modify later using `--dry-run`
+- Create a sample YAML file of the resource to modify later using `--dry-run -o yaml`
     - Example: Console out the YAML file for a deployment
         - `kubectl create deployment my-deployment --image=nginx --dry-run=client -o yaml`
+
+- Get the definition of a currenlty run pod
+    - `kubectl get pod <POD NAME> -o yaml > my-pod.yml`
 
 - Record a command using `--record` to add to the object's describe description.
     - Allows for later review of object
     - This will appear when using `describe` under `Annotations:`
     - Example: `kubectl scale development my-development replicas=5 --record`
-    - **NOTE**: This feature will be removed in future Kubernetes version
+    - **NOTE**: *This feature will be removed in future Kubernetes version*
 
 - Use sample/template resource YAML configuration as a base, then add to it
     - Sample/templates can be found in the official Kubernetes docs.
@@ -499,10 +511,10 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
 ### RBAC Objects
 
-1. *Role*
+1. **Role**
     - Sets permissions within a particular namespace
     - Can specify `namespace`
-    - Example:
+    - Example: Role definition YAML file
         - ``
             apiVersion: rbac.authorization.k8s.io/v1
             kind: Role
@@ -515,15 +527,15 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
               verbs: ["get", "watch", "list"]
           ``
 
-2. *ClusterRole*
+2. **ClusterRole**
     - Not namespace specific, cluster-wide
     - Do not need to specify `namespace`
 
-3. *RoleBinding*
+3. **RoleBinding**
     - Grants permission defined in a role to a user or set of users
     - Holds a list of subjects (users, groups, or service accounts)
     - Holds reference to the role being granted
-    - Can reference and Role in the same namespace
+    - Can only reference an Role in the same namespace
     - Can also reference a ClusterRole
     - Example:
         - ``
@@ -542,7 +554,7 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
               apiGroup: rbac.authorization.k8s.io
             ``
 
-4. *ClusterRoleBinding*
+4. **ClusterRoleBinding**
     - To bind a ClusterRole to all namespaces, use ClusterRoleBinding
 
 
@@ -554,7 +566,7 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 - Get all roles defined in a specific namespace
     - `kubectl get role --namespace <NAMESPACE>`
 
-- Apply a role or role binding
+- Apply a role or role binding definition
     - `kubectl apply -f <ROLE FILE>`
 
 - Check if user has certain access
@@ -592,9 +604,10 @@ are authenticated a Service Accounts.
     - `kubectl get sa`
 
 - Creating service accounts
-    - `kubectl create -f <CONFIG FILE>`
+    - `kubectl create -f <SERVICE ACCOUNT CONFIG FILE>`
     - `kubectl create sa <NAME> -n <NAMESPACE>`
-
+- Example: Service account definition
+    - TODO
 
 
 
@@ -638,7 +651,7 @@ Ways of doing this:
         - Note: ConfigMaps consumed as env. vars are not updated automatically (require pod restart)
     - ConfigMaps can be immutable, once created cannot be changed
     - Pods can consume ConfigMaps with the following:
-        1. Container Environmental variables
+        1. *Container Environmental variables*
             - Example:
                 - ``
                     kind: Pod
@@ -654,8 +667,8 @@ Ways of doing this:
                                   key: myKey
                     ...
                    ``
-        2. Container command-line arguments
-        3. Configuration files in a read-only volume
+        2. *Container command-line arguments*
+        3. *Configuration files in a read-only volume*
             - Top level key will be the filename
             - Sub level keys will be placed inside the file
             - Example:
@@ -696,13 +709,13 @@ Ways of doing this:
     - Protected from creating, viewing, or editing pods
     - Not designed for large data (1MB max)
     - NOTE: By default, secrets are stored un-encrypted in data store (etcd)
-    - When creating a secret using YAML file, *must base-64 encode*
-        - When read by pod, it will be decoded
-        - Example: `echo -n "some secret" | base64`
+    - When creating a secret using YAML file, the secret itself **must base64 encoded**
+        - When secret is read by pod, it will be decoded
+        - Example: `echo -n "some secret text" | base64`
     - Pods can use secrets
-        1. As files in a volume mounted to the container
-        2. Container environmental variable
-        3. Image pull authentication to authenticate to image registry
+        1. **As files in a volume mounted to the container**
+        2. **Container environmental variable**
+        3. **Image pull authentication to authenticate to image registry**
     - Example Secret definition:
         - ``
             apiVersion: v1
@@ -712,7 +725,7 @@ Ways of doing this:
             type: Opaque
             data:
                 username: user
-                password: mypass
+                password: sd89sdfh/sd9f   # <-- base64 encoded text
            ``
     - Can load a secret from a file with declarative command
         - `kubectl create secret generic my-secret --from-file <LOCAL FILENAME>`
@@ -730,7 +743,7 @@ Ways of doing this:
     - NOTE: Memory is specified in Bytes, CPU is specified in CPU or millicpu units
         - 1 physical/virtual CPU core = 1 CPU
         - 0.5 CPU = 500m
-    - Example
+    - Example:
         - ``
             apiVersion: v1
             kind: Pod
@@ -740,9 +753,9 @@ Ways of doing this:
               containers:
                 - name: busybox
                   image: busybox
-                  resources:
+                  resources:           <-- Definition
                     requests:
-                      cpu: "250m"
+                      cpu: "250m"      <-- 0.25 CPU cores
                       memory: "128Mi"
           ``
 
@@ -760,7 +773,128 @@ Ways of doing this:
                 memory: "128Mi"
           ``
 
+
 ## Monitoring Container Health with Probes
+
+Kubernetes can automatically detect unhealthy containers by actively monitoring container health.
+`kubelet` uses different probes to gauge the health and readiness of the containers.
+
+Docs: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+
+- **Liveness Probe**
+    - Allow to automatically determine whether or not a container application is healthy
+    - Monitor container on an ongoing bases over the lifetime of the container
+    - By default, will consider container down if the container process stops
+    - This mechanism can be customized
+    - Different type of liveness probes available:
+        - `exec` - Run a command, if no error, success
+        - `httpGet` - If status code is over 200 and below 400, success
+        - `tcpSocket` - TCP check if port is open, if it is, success
+    - Example: `my-pod.yaml`
+        - ``
+            apiVersion: v1
+            kind: Pod
+            ...
+            spec:
+              containers:
+              - name: liveness
+                ...
+                livenessProbe:
+                  exec:                   # <-- exec type check
+                    command:              # <-- If command succeeds = healthy!
+                    - cat                 # <-- Command
+                    - /tmp/healthy        # <-- Arguments to command
+                  initialDelaySeconds: 5  # <-- Wait 5 seconds after container startup
+                  periodSeconds: 5        # <-- Run every 5 seconds
+          ``
+
+- **Startup Probe**
+    - Only run on container startup and stop once container is up and running.
+    - Can be useful on containers that have long startup times
+    - Example:
+        - ``
+            apiVersion: v1
+            kind: Pod
+            ...
+                  startupProbe:
+                    initialDelaySeconds: 1
+                    periodSeconds: 2
+                    timeoutSeconds: 1
+                    successThreshold: 1
+                    failureThreshold: 30      <-- Number of times allowed to fail
+                    httpGet:
+                      scheme: HTTP
+                      path: /
+                      httpHeaders:
+                        - name: Host
+                          value: myapplication1.com
+                      port: 80
+          ``
+
+- **Readiness Probe**
+    - Used to determine when container is ready to accept requests/traffic
+    - Traffic to a particular pod will not be send until all readiness checks have passed
+    - Readiness probe same as liveness and startup probe except: `readinessProbe:` block
+
+
+
+## Self-Healing Pods with Restart Policies
+
+Kubernetes allows you to customize when and how containers to be automatically restarted.
+Three different values for restart policies: `Always`, `OnFailure`, and `Never`.
+
+Can view pod restart status with `kubectl get pod <POD NAME>`
+
+1. `Always` *(default)*
+    - Containers always restarted if stopped
+    - Even stopped when completed successfully
+    - This is applications that always need to be running
+    - Example:
+        - ``
+            apiVersion: v1
+            kind: Pod
+            ...
+            spec:
+              restartPolicy: Always     # <--
+              container:
+                ...
+          ``
+
+2. `OnFailure`
+    - Container is unhealthy or exists with error code
+    - Applications that need to run successfully and then stop
+
+3. `Never`
+    - No matter what, do not restart container
+    - For containers that need to only run one time
+    - If container fails, pod status is `Error`
+
+
+
+## Multi-Container Pods
+
+More than one container running inside a single pod. Containers share pod resources such as
+network and storage. Containers can interact with each other.
+
+- Keep containers in separate Pods unless they need to share resources
+- Secondary container is sometimes called `sidecar`
+- Shared resources
+
+    - **Networking** 
+        - Same network namespace and can communicate on any port
+        - Even if port is not exposed to the cluster
+
+    - **Storage**
+        - Using container volumes to share data in the pod
+
+
+
+
+
+
+
+
+
 
 
 
