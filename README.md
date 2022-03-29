@@ -879,27 +879,161 @@ network and storage. Containers can interact with each other.
 - Keep containers in separate Pods unless they need to share resources
 - Secondary container is sometimes called `sidecar`
 - Shared resources
-
-    - **Networking** 
+    - **Networking**
         - Same network namespace and can communicate on any port
         - Even if port is not exposed to the cluster
-
     - **Storage**
         - Using container volumes to share data in the pod
+- Example: Two containers sharing one volume
+    - ``
+        apiVersion: v1
+        kind: Pod
+        metadata:
+            name: sidecar-pod
+        spec:
+            containers:
+                - name: busybox1
+                  image: busybox
+                  command: ['sh', '-c', 'while true; do echo logs data > /output/output.log; sleep 5; done']
+                  volumeMounts:
+                    - name: sharedvol      # <-- Same shared volume
+                      mountPath: /output#  # <-- Mounted here in container
+                - name: sidecar
+                  image: busybox
+                  command: ['sh', '-c', 'tail -f /input/output.log']
+                  volumeMounts:
+                    - name: sharedvol      # <-- Same shared volume
+                      mountPath: /input    # <-- Mounted here in container
+            volumes:
+              - name: sharedvol
+                emptyDir: {}
+      ``
+
+
+## Init Containers
+
+Docs: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+
+- Containers that run during startup process
+- Listed in `InitContainer` spec section
+- Run before any other containers in `containers` section
+- Must run to once and to completion
+- Run in the order they are listed
+- Used to setup the pod, install tooling, etc
+- Can container tasks and setup scripts not needed in the main containers
+- When starting a pod, status will read `Init` if currently running init container
+- Possible use cases
+    - Wait for another Kubernetes resource to be created before startup
+    - Perform sensitive startup steps securely outside of app containers
+    - Populate data into a shared volume at startup. Main app container can read it.
+    - Communicate with another service at startup
+- Example: Init container with simple startup delay
+    - ``
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: init-pod
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.19.1
+          initContainers:
+            - name: delay
+              image: busybox
+              command: ['sleep', '30']
+      ``
+
+- Example: Wait for a service
+    -``
+        apiVersion: v1
+        kind: Pod
+        ...
+        spec:
+        ...
+          initContainers:
+            - name: my-init-container
+              image: busybox:1.28
+              command: ['sh', '-c', "until nslookup my-service; do echo waiting for my-service; sleep 2; done"]
+     ``
 
 
 
+# Scheduling in Kubernetes
+
+Docs: https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/
+
+In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes so that Kubelet can run them.
+
+- **Scheduler**
+    - Control plane component that handles scheduling
+    - Watches newly created Pods and finds best Node for it
+- Taken into account by scheduler:
+    - Resource requests and available node resources
+    - Various configurations that affect scheduling using node labels
+        - ie. `nodeSelector`
+
+## Pod Scheduling Configurations
+
+### `nodeSelector`
+
+- Limits which nodes the pod can be scheduled on
+- Use labels to filter suitable nodes
+- Can assign labels to nodes
+    - `kubectl label nodes <NODE NAME> <KEY>=<VALUE>`
+    - Example: `kubectl label nodes <worker1> mylabel=someValue`
+- Example:
+    - ``
+        apiVersion: v1
+        kind: Pod
+        ...
+        spec:
+          ...
+          nodeSelector:
+            mylabel: someValue      # <-- Only nodes with this label
+      ``
+
+### `nodeName`
+
+- Bypass scheduling logic and assign pod to a specific Node by node name
+- Example:
+    - ``
+        ...
+        spec:
+          ...
+          nodeName: worker0
+      ``
+- Getting node names
+    - `kubectl get nodes`
 
 
+## DaemonSets
 
-
-
-
-
-
-
-
-
+- DaemonSets will automatically runs a copy of a Pod on each node in the cluster
+- Will run copy of the Pod on new nodes as they are added to the cluster
+- Manages specified pods
+- Will respect scheduling rules (ie. labels, taints, tolerations)
+- Belong to `apiVersion: apps/v1`
+- Example: Single pod, single container in each node
+    - ``
+        apiVersion: apps/v1         # <-- NOTE
+        kind: DaemonSet
+        metadata:
+          name: my-daemonset
+        spec:
+          selector:
+            matchLabels:
+              app: my-daemonset     # <-- Any Pods that have this label
+          template:                 # <-- The Pod template to create pods
+            metadata:
+              labels:
+                app: my-daemonset   # <-- Typically matches the above selector
+            spec:
+              containers:
+                - name: nginx
+                  image: nginx:1.19.1
+       ``
+- Get list of DaemonSets
+    - `kubectl get daemonset`
 
 
 
