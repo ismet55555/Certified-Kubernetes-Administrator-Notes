@@ -499,6 +499,16 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
 - Use sample/template resource YAML configuration as a base, then add to it
     - Sample/templates can be found in the official Kubernetes docs.
 
+- Can edit an active resource object using `kubectl edit <RESOURCE TYPE> <RESOURCE NAME>`
+    - Will open a text editor (ie. VIM)
+    - Example: `kubectl edit deployment my-deployment`
+    - Example: `kubectl edit networkpolicy -n some-namespace my-networkpolicy`
+
+- Adding CLI command completion to shell
+    - `kubeadm completion bash >> .bashrc`
+    - `kubectl completion bash >> .bashrc`
+    - Reload current shell (`exec bash`) or open a new shell
+
 
 ## Role-Based Access Control (RBAC) Authorization
 
@@ -1008,7 +1018,10 @@ In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes s
 
 ## DaemonSets
 
-- DaemonSets will automatically runs a copy of a Pod on each node in the cluster
+DaemonSets will automatically runs a copy of a Pod on each node in the cluster
+
+Docs: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
+
 - Will run copy of the Pod on new nodes as they are added to the cluster
 - Manages specified pods
 - Will respect scheduling rules (ie. labels, taints, tolerations)
@@ -1034,6 +1047,264 @@ In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes s
        ``
 - Get list of DaemonSets
     - `kubectl get daemonset`
+    - Will show how many desired/current/ready pods are running
+
+
+## Static Pods
+
+Static Pods are managed directly by kubelet daemon on a specific node, without the API server 
+observing them.
+
+Docs: https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
+
+- Not managed by control plane, only kubelet watches each Static Pod.
+- Can run even if there is no Kubernetes API server present
+- Pod definition (YAML or JSON) is placed in a specific place on the node where kubelet will pick it up
+    - This location is configurable
+    - Default: `/etc/kubernetes/manifests/`
+    - May need root permission to add files here
+- Kubelet will automatically create "mirror Pod" which acts to make the Pod visible to 
+  Kubernetes API server (But can't manage via API server)
+    - Can see if with `kubectl get pods`
+
+
+
+
+
+# Deployments
+
+Defines a desired state (declaritive) for a ReplicaSet (set of replica Pods)
+
+Docs: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+
+- Deployment controller seeks to maintain the desired state by creating, deleting, and replacing
+  Pods with new configurations.
+- Use cases
+    - Scale application up or down by changing replica Pod number
+    - Perform rolling updates to deploy new software version (ie. image versions)
+    - Roll back to previous software version
+- Includes the following configurations
+    - `replicas` - Number of replica Pods that the Deployment will seek to maintin
+    - `selector` - Label selector used to identify the replica Pods managed by the Deployment
+    - `template` - Pod definition used to create all replica Pods for the Deployment
+- Example:
+    - ``
+        apiVersion: apps/v1      # <-- Note
+        kind: Deployment
+        metadata:
+          name: nginx-deployment
+          labels:
+            app: nginx
+        spec:
+          replicas: 3            # <-- 3 Pods in this deployment
+          selector:
+            matchLabels:
+              app: nginx         # <-- Get any pods with this metadata label
+          template:              # <-- Definition of the Pod for this deployment
+            metadata:            # <-- Note no "name:". Deployment will give name.
+              labels:
+                app: nginx       # <-- Match label in selector above
+            spec:
+              containers:
+              - name: nginx
+                image: nginx:1.14.2
+                ports:
+                - containerPort: 80
+        ``
+- Can change the image of a Deployment without YAML
+    - `kubectl set image deployments/<DEPLOYMENT NAME> <IMAGE NAME AND VERSION>`
+    - Example: `kubectl set image deployments/my-deployment nginx:1.16.1`
+
+
+
+## Scaling Applications with Deployments
+
+Docs: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#scaling-a-deployment
+
+- Dedicating more or fewer resources to an application in order to meet changing needs.
+- Useful in horizontal scaling
+- Few ways of doing this
+    - Change `replicas` value in YAML deployment description then `kubectl apply`
+    - Use command `kubectl scale`
+        - Example: `kubectl scale deployment/my-deployment --replicas=5`
+    - Use command `kubectl autoscale` to scale depending on other factors
+        - Example: Scaling based on CPU utilization
+            - `kubectl autoscale deployment/my-deployment --min=10 --max=15 --cpu-percent=80`
+- Can actively change a deployment
+    - `kubectl edit deployment <DEPLOYMENT NAME>`
+    - Change the deployment `replicas` in the `spec` section!
+
+
+
+## Rolling Updates with Deployments
+
+- **Rolling Updates**
+    - Allows changes to Deployment at a controlled rate.
+    - Gradually replacing old Pods with new Pods
+    - Allows you to update your Pods without incurring downtime
+    - This is by default triggered any time Deployment is updated
+
+- **Rolback**
+    - If update to deployment causes issues, you can roll back the deployment to previous
+      working condition.
+
+- Deployment rollout management commands
+    - `kubectl rollout status deployment/<DEP. NAME>` - Checking deployment rolling update status
+    - `kubectl rollout history deployment/<DEP. NAME>` - Checking deployment rollout history
+    - `kubectl rollout undo deployment/<DEP. NAME>` - Undo previous deployment rollout
+    - `kubectl rollout pause deployment/<DEP. NAME>` - Pause deployment rollout
+    - `kubectl rollout resume deployment/<DEP. NAME>` - Resume paused deployment rollout
+
+
+
+
+# Networking
+
+Docs: https://kubernetes.io/docs/concepts/services-networking/
+
+
+## Network Model
+
+Docs: https://www.ibm.com/docs/en/cloud-private/3.1.2?topic=networking-kubernetes-network-model
+
+- Set of standards that define how networking between Pods behaves
+- Variety of this model implementation
+    - Calico network plugin
+- Define how pods communicate with each other
+- Each pod has its own unique IP address within the cluster, even in a different node!
+    - A pod can reach any other pod using pod's IP
+    - Pod IPs drawn from IP pool created at installation time
+- Kubernetes services can expose application on Pod to be reachable outside of the cluster
+
+
+## Container Network Interface (CNI) Pugins
+
+Docs: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/
+
+- Type of Kubernetes network plugins
+- Provide network connectivity between Pods
+- Adhere to the standard set by the Kubernetes network model
+- Plugins will depend on specific situation
+- Each plugin installation process may differ
+- Nodes will remain in `NotReady` state until a network plugin is installed
+- Example network plugin installation
+    - `kubectl apply -f <LOCAL FILE OR REMOTE URL YAML>`
+
+
+## Domain Name System (DNS) in Kubernetes
+
+Docs: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+
+- Allows Pods to locate other Pods and Services using domain names (ie. `some-name` instead of IP address (ie. `192.168.1.3`)
+- DNS runs as a service within the cluster
+- Typically in `kube-system` namespace
+- kubeadm clusters
+    - Use CoreDNS as DNS solution
+        - Typically can see them
+            - Pods: `kubectl get pods -n kube-system`
+            - Service: `kuabectl get service -n kube-system`
+    - Automatically given domain name of the following form
+        - `<POD IP>.<NAMESPACE NAME>.pod.cluster.local`
+        - NOTE: Pod IP address `.` replaced by `-`
+        - Example: `192-168-10-100.default.pod.cluster.local`
+        - Another pod can communicate with this pod using this DNS name
+    - More useful with kubernetes services
+
+
+## Network Policies
+
+Kubernetes object that allows you to control the flow of network communication to and from the Pods
+
+Docs: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+
+- Allows for a more secure network
+- Can isolate the Pod from traffic that is not needed
+- **By default, pods are considered non-isolated and completely open to all traffic**
+- NetworkPolicy can apply to Ingress (incoming), Egress (outgoing), or both types of network traffic
+    - Ingress traffic => `from`
+    - Egress traffic => `to`
+    - Can use different selectors for `from` and `to`
+        1. `podSelector` - Traffic from and to specific pods
+        2. `namespaceSelector` - Traffic from and to specific namespaces
+        3. `ipBlock` - Traffic from a specifc IP range using CIDR notation (ie. 10.0.1.0/16)
+    - `port` - Specify one or more ports that will allow traffic, includes protocol (ie. `TCP`)
+- Example:
+    - ``
+        apiVersion: networking.k8s.io/v1   # <-- Note
+        kind: NetworkPolicy
+        metadata:
+          name: test-network-policy
+          namespace: default
+        spec:
+          podSelector:                   # <-- Which pod to apply this to, same namespace
+            matchLabels:
+              role: db
+          policyTypes:                   # <-- Should batch the sections below
+          - Ingress                      # <-- If "ingress" section omitted, no in traffic
+          - Egress                       # <-- If "egress" section omitted, no out traffic
+          ingress:
+          - from:                        # <-- "from" for ingress only
+            - ipBlock:
+                cidr: 172.17.0.0/16      # <-- Allow this IP range
+                except:
+                - 172.17.1.0/24
+            - namespaceSelector:
+                matchLabels:
+                  project: myproject     # <-- Allow from name space with this label
+            - podSelector:
+                matchLabels:
+                  role: frontend         # <-- Allow Pods with this label
+            ports:                       # <-- Rules applied only to these ports/protocol
+            - protocol: TCP
+              port: 6379
+          egress:
+          - to:                          # <-- "to" for egress only
+            - ipBlock:
+                cidr: 10.0.0.0/24
+            ports:
+            - protocol: TCP
+              port: 5978
+        ``
+
+
+
+## Troubleshooting Network
+
+- Network is not set up
+    - **ISSEUS**:
+        - Cluster Notes status is `NotRead` network is not set up
+        - Pod `IP` is `<none>`and/or `STATUS` is `Pending`, network is not set up
+        - `kubectl describe node <NODE NAME>` shows event of `Starting kube-proxy`
+        - `kubectl get pods -n kube-system` shows no network plugin pod (ie. `calico*`)
+    - **SOLUTIONS**
+        - `kubectl apply -f <NETOWRK PLUGIN YAML>`
+
+- Misconfigured NetworkPolicies
+    - **ISSUES**
+        - Within the same namespace, pods cannot communicate with each other
+        - `curl <IP ADDRESS>` from one pod cannot reach another pod
+    - **SOLUTIONS**
+        - Check network policties
+            - `kubectl get networkpolicy`
+            - `kubectl describe networkpolicy <NAME>`
+        - Adjust all NetworkPolicies
+            - `kubectl edit networkpolicy -n <NAMESPACE> <NAME>`
+            - `kubectl apply -f <NETWORK POLOCY YAML>
+
+- Pods ARE able to communicate with a specific Pod, Namespace, 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1050,7 +1321,11 @@ In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes s
 
 
 
+# NOTES
 
+- Overview and learn `nslookup`
+    - Lookup DNS records
+    -
 
 
 
