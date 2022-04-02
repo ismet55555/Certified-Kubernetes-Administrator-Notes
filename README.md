@@ -509,6 +509,30 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
     - `kubectl completion bash >> .bashrc`
     - Reload current shell (`exec bash`) or open a new shell
 
+- Check reaching a pod/service from termporary pod
+    - Need to use simple busybox pod with curl installed
+    - Describe simple pod with `alpine` image
+    - ``
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: curl-pod
+        spec:
+          containers:
+            - name: curl-pod
+              image: alpine
+              command: ['watch', 'ls']  # <-- Runs "ls" every 2 seconds
+      ``
+    - Run `wget` form this pod to other objects
+        - To other pod: `kubectl exec curl-pod -- wget -O - <POD IP>:<PORT OF POD>`
+        - To service: `kubectl exec curl-pod -- wget -O - <SERVICE NAME>:<ClusterIP PORT>`
+
+- Check DNS entries within a Pod
+    - `kubectl exec <POD NAME> -- nslookup <IP ADDRESS>`
+    - Example:
+        - `kubectl exec my-test-pod -- nslookup 10.104.162.248`
+        - Response shows the DNS entry for that IP address
+
 
 ## Role-Based Access Control (RBAC) Authorization
 
@@ -1226,7 +1250,7 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/network-policies/
     - Can use different selectors for `from` and `to`
         1. `podSelector` - Traffic from and to specific pods
         2. `namespaceSelector` - Traffic from and to specific namespaces
-        3. `ipBlock` - Traffic from a specifc IP range using CIDR notation (ie. 10.0.1.0/16)
+        3. `ipBlock` - Traffic from a specific IP range using CIDR notation (ie. 10.0.1.0/16)
     - `port` - Specify one or more ports that will allow traffic, includes protocol (ie. `TCP`)
 - Example:
     - ``
@@ -1289,18 +1313,193 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/network-policies/
             - `kubectl describe networkpolicy <NAME>`
         - Adjust all NetworkPolicies
             - `kubectl edit networkpolicy -n <NAMESPACE> <NAME>`
-            - `kubectl apply -f <NETWORK POLOCY YAML>
+            - `kubectl apply -f <NETWORK POLOCY YAML>`
 
-- Pods ARE able to communicate with a specific Pod, Namespace, 
-
-
-
-
-
-
+- All open traffic between Pods, namespaces, IP
+    - **ISSUES**
+        - Pods ARE able to communicate with a specific Pod, Namespace, IP ranges
+    - **SOLUTIONS**
+        - No NetworkPolicies are set up, set them up
 
 
 
+
+
+# Services
+
+Services expose applications running as a set of Pods.
+
+Docs: https://kubernetes.io/docs/concepts/services-networking/service/
+
+- Clients are not aware of Pods (creates abstraction)
+- Client traffic to a Kubernetes service is routed to its Pods in a load-balanced fashion
+    - *Client -> Service -> Pods in cluster*
+- **Endpoints**
+    - Backend entities to which services route traffic
+    - Services that route to multiple Pods, each Pod has an endpoint for that Service
+    - Look at Service's Endpoints to determine Service-Pod traffic routing
+        - `kubectl get endpoints <SERVICE NAME>`
+
+
+## Types of Services
+
+How and where the Service will expose the application.
+
+1. ClusterIP (default)
+    - Expose applications *inside* the cluster network
+    - Clients will be other Pods within the cluster
+    - Pod --> Service --> Pods
+    - Can create a starting template:
+        - `kubectl create service clusterip svc-internal --tcp=80:80 --dry-run='client' -o yaml > svc-internal.yml`
+        - Remember, you can set up command completion, and use `--help`
+    - Example: Service exposed within a cluster
+        - ``
+            apiVersion: v1            # <-- Note
+            kind: Service
+            metadata:
+              name: svc-clusterip
+            spec:
+              type: ClusterIP         # <-- Can leave out, it is default anyways
+              selector:
+                app: svc-example      # <-- Locate and attach to Pods with this label
+              ports:                  # <-- Can have many ports
+                - protocol: TCP
+                  port: 80            # <-- Service listens on this port
+                  targetPort: 80      # <-- Port on Pods attached to this service
+          ``
+
+2. NodePort
+    - Expose application *outside* the cluster network
+    - Applications or users are accessing application from outside the cluster
+    - Can be accessed using the Node's IP address (ie. `<NODE IP>:<NodePort>`
+    - Kubernetes allocates a port from a range of (default: 30000-32767) to service
+        - Same port on every Node
+        - For example, port 30020, on all Nodes running the Service
+        - Can specify with `nodePort` key
+    - Can create a starting template:
+        - `kubectl create service nodeport svc-external --tcp=80:80 --dry-run=client -o yaml > svc-external.yml`
+        - Remember, you can set up command completion, and use `--help`
+    - Example: Service exposed outside a cluster
+        - ``
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: my-service
+            spec:
+              type: NodePort        # <-- Note
+              selector:
+                app: MyApp
+              ports:
+                  # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
+                - port: 80          # <-- Service listens on this port
+                  targetPort: 80    # <-- Ports on Pods attached to this service
+                  nodePort: 30007   # <-- Exposed port on nodes. Optional, by default chosen 30000-32767
+          ``
+
+3. LoadBalancer
+    - Expose applications *outside* of cluster network
+    - Use external cloud load balancer
+    - Only works with cloud platforms (ie. AWS) that include load balancing
+    - Client -> LoadBalancer -> Cluster/Service -> Pod
+
+4. ExternalName
+    - No proxying of any kind is set up
+    - Maps Service to contents of `externalName` field (ie. foo.bar.example.com)
+    - *Not covered in CKA exam*
+
+
+
+## Service DNS Names
+
+Docs: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+
+- Kubernetes assigns DNS names to Services, allowing applications within the cluster to easily
+locate them
+- DNS query in different namespaces may return different results
+- Fully Qualified Domain Name (FQDN) has the following format:
+    - `<SERVICE NAME>.<NAMESPACE NAME>.svc.<CLUSTER DOMAIN>`
+    - Default `<CLUSTER DOMAIN>` is `cluster.local`
+    - Examples:
+        - `my_service.default.svc.cluster.local`
+        - `my_service.testing.svc.my_company.com`
+- FQDN can be reached form any Namespace in the entire cluster
+- Pods within the **same** Namespace can simply use the service name
+
+
+
+## Access From Outside with Kubernetes Ingress
+
+Docs: https://kubernetes.io/docs/concepts/services-networking/ingress/
+
+- Ingress (incoming) is a Kubernetes object that manages external access to Services in the cluster
+- Typically HTTP of HTTPS routes from the outside of the cluster
+- More functionality than a simple `NodePort` Service
+- Can manage SSL termination, advanced load balancing, or name-based virtual hosting
+- Can create starting template:
+    `kubectl create ingress <NAME> --path:<SERVICE>:<PORT> [OPTIONS]`
+- Example:
+    - **Client -> Ingress -> Service -> Pods**
+- Define a set of **routing rules**
+    - Routing rule properties determine to which requests it applies to
+    - Each routing rule has set of **paths** that corresponds to a backend service
+    - Requests that matches the path will be routed to the backend
+    - Example:
+        - ``
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              name: my-ingress
+            spec:
+              rules:
+                - http:
+                    paths:
+                      - path: /somepath       # <-- When this path is requested
+                        pathType: Prefix
+                        backend:
+                          service:
+                            name: my-service  # <-- Route to this service, can be ClusterIP-based
+                            port:
+                              number: 80      # <-- To this service port
+          ``
+        - Request: `http://some-endpoint.com/somepath`
+        - Will be routed to Service `my-service` at port `80`
+- If service uses **named ports**, Ingress can use the port name for `port`
+    - Example:
+        - ``
+            ...
+                  backend:
+                    service:
+                      name: my-service
+                      port:
+                      name: http-port   # <-- In Pod: spec.ports.name
+          ``
+- Check Ingress: `kubectl describe ingress <INGRESS NAME>`
+- `pathType`
+    - Docs: https://kubernetes.io/docs/concepts/services-networking/ingress/#path-types
+    - `Exact` - Matches URL path exactly and is case sensitive
+    - `Prefix` - Mataches based on URL path prefix split by `/`. (ie. `/yo` matches `/yo/blah`)
+
+### Ingress Controllers
+
+Docs: https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/
+
+- Ingress objects can't do anything themselves
+- Must have one or more *Ingress Controllers*
+- Variety of Ingress Controllers, with different implementation methods for external access to Service
+- Commonly and easily installed with Helm Charts
+- Can add annotations to Ingress object referencing Ingress Controller functionality
+- Most have UI with them available
+- **Example:** NGINX Ingress Controller (https://kubernetes.github.io/ingress-nginx/)
+    - Does not require third-party modules to run
+    - Simplest to set up and use
+    - Best for beginners
+    - Does not support dynamic design, reload needed after endpoint change
+- **Example:** Traefik (https://traefik.io/)
+    - Support for TCP, HTTP, HTTPS, and GRPC
+    - Supports round-robin and weighted round-robin for load balancing
+    - Supports *Let's Encrypt*
+    - Setup requires setting up ServiceAccount, ClusterRole, Deployment for Traefik
+- **Example:** Istio (https://istio.io/)
 
 
 
@@ -1317,6 +1516,8 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/network-policies/
     - `sudo vim /etc/hosts`
     - Add private IPs for all servers
     - `<PRIVATE IP> <HOSTNAME>`
+
+
 
 
 
