@@ -1345,7 +1345,7 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/service/
 
 How and where the Service will expose the application.
 
-1. ClusterIP (default)
+### ClusterIP (default)
     - Expose applications *inside* the cluster network
     - Clients will be other Pods within the cluster
     - Pod --> Service --> Pods
@@ -1368,7 +1368,7 @@ How and where the Service will expose the application.
                   targetPort: 80      # <-- Port on Pods attached to this service
           ``
 
-2. NodePort
+### NodePort
     - Expose application *outside* the cluster network
     - Applications or users are accessing application from outside the cluster
     - Can be accessed using the Node's IP address (ie. `<NODE IP>:<NodePort>`
@@ -1396,13 +1396,13 @@ How and where the Service will expose the application.
                   nodePort: 30007   # <-- Exposed port on nodes. Optional, by default chosen 30000-32767
           ``
 
-3. LoadBalancer
+### LoadBalancer
     - Expose applications *outside* of cluster network
     - Use external cloud load balancer
     - Only works with cloud platforms (ie. AWS) that include load balancing
     - Client -> LoadBalancer -> Cluster/Service -> Pod
 
-4. ExternalName
+### ExternalName
     - No proxying of any kind is set up
     - Maps Service to contents of `externalName` field (ie. foo.bar.example.com)
     - *Not covered in CKA exam*
@@ -1500,6 +1500,259 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/ingress-controller
     - Supports *Let's Encrypt*
     - Setup requires setting up ServiceAccount, ClusterRole, Deployment for Traefik
 - **Example:** Istio (https://istio.io/)
+
+
+
+# Storage
+
+- Container file system is ephemeral/temporary and is deleted when container is removed or 
+  recreated
+- To hold on to data persistantly, we need a non-ephemeral solution
+
+
+## Volumes
+
+Allow storage of data outside of the container file system while allowing the container to
+access the data at runtime.
+
+Docs: https://kubernetes.io/docs/concepts/storage/volumes/
+
+- Volume belongs to the Pod and there for the life of the Pod
+- Available even if container is removed, data is still there
+- Simple container external storage
+- Can be set up with Pod/container specification
+- Mounting the same volume into multiple containers allows for sharing of data between containers
+  on the same Pod
+    - Could have a "sidecar" container with special tools to process data from main container
+- **Example**: Pod directory mounted into the container
+    - ``
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: pod-with-volume
+        spec:
+          containers:
+            - name: busybox
+              image: busybox
+              volumeMounts:            # <-- List of Mounts within container
+                - name: my-volume      # <-- Reference volume in volume section
+                  mountPath: /output   # <-- Directory within the container
+            - name: busybox2           # <-- Can have more than one container
+              image: busybox
+              volumeMounts:
+                - name: my-volume      # <-- Same volume to share data between containers
+                  mountPath: /input
+          volumes:
+            - name: my-volume
+              hostPath:                # <-- Reference dir/file on host Node filesystem
+                path: /var/data        # <-- Directory on Pod
+            - name: my-empty-dir
+              emptyDir: {}             # <-- Temp. empty directory on Node only for life of Pod
+      ``
+
+
+## Volume Types
+
+Docs: https://kubernetes.io/docs/concepts/storage/volumes/#volume-types
+
+Volumes and Persistent Volumes have a **volume type**, which determines how the storage is
+actually handled.
+
+Various volumes types support storage methods such as:
+
+- Network File System (NFS)
+- Cloud storage (AWS, Azure, GCP, etc)
+- Kubernetes ConfigMaps and Secrets
+- Simple directory on the cluster Nodes
+
+### Common Volume Types
+
+- `hostPath`
+    - Stores data in a specified file or directory on the host Node
+    - `type` can be:
+        - `Directory`
+        - `File`
+        - `Socket`
+        - more
+- `emptyDir`
+    - Directory that exists only as long as the Pod exists on the Node
+    - Directory and its data are deleted when Pod is removed
+    - Useful for simply sharing data between containers in same Pod
+- `configMap`
+    - Inject configuration data into pods
+    - Provide ConfigMaps name in the volume section
+    - **Example**:
+        - ``
+          volumes:
+            - name: config-vol
+              configMap:
+                name: log-config     # <-- Name of the ConfigMap
+                items:
+                  - key: log_level
+                    path: log_level
+          ``
+
+
+
+
+## Persistent Volumes
+
+Allows treating storage as an abstract resource
+
+
+### PersistantVolume (pv)
+
+Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+
+- Treats storage as abstract resource for Pods
+- Describes the underlying storage resource (local, cloud, etc)
+- Tell Kubernetes what you need and it will allocate as you need it
+- Storage in the cluster that has been provisioned by an admin or dynamically provisioned
+  using Storage Classes
+- `storageClassName` references a `StorageClass` object
+- `persistentVolumeReclaimPolicy` determines how the storage resources can be reused when the
+  PersistentVolume's associated PersistentVolumeClaims are delted
+    - `Retain` - Keep all data. Manual clean up and prepare for reuse
+    - `Recyle` - Delete all data. Basic scrub (`rm -rf /my-volume/*`)
+    - `Delete` - Associated storage asset is deleted (only for cloud resources)
+- Check status of PersistentVolume
+    - `kubectl get pv`
+    - Statuses
+        - `Available` - Not bound to PersistentVolumeClaim
+        - `Bound` - Bound to a PersistentVolumeClaim
+        - `Released` - Claim has been deleted, resources not yet reclaimed by cluster
+        - `Failed` - Voulme failed automatic reclamation
+- **Example:**
+    - ``
+        apiVersion: v1
+        kind: PersistentVolume
+        metadata:
+          name: my-pv
+        spec:
+          storageClassName: localdisk             # <-- References a StorageClass
+          persistentVolumeReclaimPolicy: Recycle  # <-- Scrub and reuse
+          capacity:
+            storage: 1Gi                          # <-- Total available to claim
+          accessModes:
+            - ReadWriteOnce                       # <-- Must match PersistentVolumeClaim!
+          hostPath:                               # <-- Type of storage
+            path: /var/output
+      ``
+
+
+### StorageClass (sc)
+
+Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
+
+- Allows admins to specify types of storage services offered on their platform
+- Different `parameters` may be accepted depending on the `provisioner`
+    - Example: For provisioner `kubernetes.io/aws-ebs` we can have the following
+        - ``
+            provisioner: kubernetes.io/aws-ebs
+            parameters:
+              type: io1
+              iopsPerGB: "10"
+              fsType: ext4
+          ``
+- Use case could include creating a low-performance and high-performance storage type
+- Kubernetes users can then choose StorageClass that fit need of application
+- `allowVolumeExpansion` determines whether or not the StorageClass supports the ability to resize
+  volumes after they are created
+    - If set to `false` and try to resize, will get an error
+    - By default, set to `false`
+- If not StorageClass is created, one will be automatically be created
+- **Example:** Storage Class for local storage
+    - ``
+        apiVersion: storage.k8s.io/v1              # <-- Note
+        kind: StorageClass
+        metadata:
+          name: localdisk
+        provisioner: kubernetes.io/no-provisioner  # <-- Type of service/platorm/provider
+        allowVolumeExpansion: true                 # <-- Volume can be resized after creation
+      ``
+
+
+### PersistentVolumeClaim (pvc)
+
+- Request for storage by a user.
+- PersistentVolumeClaims consume PersistentVolume resources
+- References Order:
+    - **Pod -> Persistent Volume Claim -> Persistent Volume -> External Storage**
+    - Define/Create in reverse!
+
+- Claims can request specific storage size and access modes
+- PersistentVolume and PersistentVolumeClaims are bound
+- Will look for PersistentVolume that is able to meet requested criteria
+    - If found, it will bind to it
+- **Example:**
+    - ``
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: my-pvc
+        spec:
+          storageClassName: localdisk     # <-- Reference StorageClass
+          volumeMode: Filesystem          # <-- Default value
+          accessModes:
+            - ReadWriteOnce               # <-- Must match PersistentVolume!
+          resources:
+            requests:
+              storage: 100Mi              # <-- Storage claimed from PersistentVolume
+      ``
+- Finally, the PersistentVolumeClaim is mounted in as a volume for a Pod
+    - **Example:**
+        - ``
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              name: pv-pod
+            spec:
+              containers:
+                - name: busybox
+                  image: busyboxs
+                  volumeMounts:
+                    - name: pv-storage
+                      mountPath: /output    # <-- Volume mounted here
+              volumes:
+                - name: pv-storage
+                  persistantVolumeClaim:
+                    claimName: my-pvc       # <-- Reference to pvc
+          ``
+- Can edit PersistentVolumeClaim to expand storage
+    - `kubectl edit pvc <PVC NAME>`
+    - `kubectl apply -f <EDITED YAML FILE>`
+    - Change `resources.requests.storage`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
