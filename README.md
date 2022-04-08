@@ -1534,7 +1534,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/volumes/
           containers:
             - name: busybox
               image: busybox
-              volumeMounts:            # <-- List of Mounts within container
+              volumeMounts:            # <-- List of mounts within container
                 - name: my-volume      # <-- Reference volume in volume section
                   mountPath: /output   # <-- Directory within the container
             - name: busybox2           # <-- Can have more than one container
@@ -1556,7 +1556,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/volumes/
 Docs: https://kubernetes.io/docs/concepts/storage/volumes/#volume-types
 
 Volumes and Persistent Volumes have a **volume type**, which determines how the storage is
-actually handled.
+actually handled (mechanism for storage).
 
 Various volumes types support storage methods such as:
 
@@ -1574,7 +1574,8 @@ Various volumes types support storage methods such as:
         - `File`
         - `Socket`
         - more
-- `emptyDir`
+    - `path` is the directory on the Node
+- `emptyDir: {}`
     - Directory that exists only as long as the Pod exists on the Node
     - Directory and its data are deleted when Pod is removed
     - Useful for simply sharing data between containers in same Pod
@@ -1613,7 +1614,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 - `persistentVolumeReclaimPolicy` determines how the storage resources can be reused when the
   PersistentVolume's associated PersistentVolumeClaims are delted
     - `Retain` - Keep all data. Manual clean up and prepare for reuse
-    - `Recyle` - Delete all data. Basic scrub (`rm -rf /my-volume/*`)
+    - `Recycle` - Delete all data. Basic scrub (`rm -rf /my-volume/*`)
     - `Delete` - Associated storage asset is deleted (only for cloud resources)
 - Check status of PersistentVolume
     - `kubectl get pv`
@@ -1731,6 +1732,124 @@ Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
 
 
 
+# Troubleshooting
+
+
+## Kubernetes API server down
+
+- Symptoms:
+    - `kubectl` cannot interact with cluster
+    - Error Message
+        - `The connection to the server <ADDRESS>:<PORT> was refused = did you specify the right host or port?`
+- Possible fixes:
+    - Makes sure docker and kubelet services are up and running on control node
+    - `docker --version`
+    - `sudo systemctl status kubelet`
+
+
+## Node is having problems
+
+1. Check Node status
+    - `kubectl get nodes`
+    - `kubectl describe node <NODE NAME>`
+
+2. Check status and/or starting/enabling services
+    - For `docker` and `kubelet`
+    - Status: `sudo systemctl status kubelet`
+    - Start: `sudo systemctl start kubelet`
+    - Enable: `sudo systemctl enable kubelet`
+
+
+## Cluster Pod is having problems
+
+`kubeadm` cluster, several kubernetes components run as pods in `kube-system` namespace
+
+1. Check `kube-system` component status
+    - `kubectl get pods -n kube-system`
+    - `kubectl describe pod <POD NAME> -n kube-system`
+
+
+## Kubernetes Service Logs
+
+Can check logs for Kubernetes related services on each node using `journalctl`
+
+- `sudo journalctl -u kubelet`
+- `sudo journalctl -u docker`
+
+`SHIFT-g` to jump to the end of logs
+
+
+## Cluster component logs
+
+Kubernetes cluster components have log output redirected to `/var/log`
+
+- `/var/log/kube-apiserver.log`
+- `/var/log/kube-scheduler.log`
+- `/var/log/kube-controller-manager.log`
+
+Note, `kubeadm` clusters may not have these components because components run inside container.
+In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
+
+
+## Applications
+
+1. Getting status
+    - `kubectl get pod`
+    - `kubectl describe pod <POD NAME>`
+
+2. Run command inside container in pod
+    - `kubectl exec <POD NAME> -c <CONTAINER NAME> -- <COMMAND>`
+
+3. Interactive shell inside the pod container
+    - `kubectl exec <POD NAME> -c <CONTAINER NAME> -i -t -- /bin/sh`
+
+4. Get container logs
+    - `kubectl logs <POD NAME> -c <CONTAINER NAME>`
+
+
+## Networking
+
+1. Check if kubernetes networking plugin is up and running
+
+2. Check `kube-proxy`
+    -`kube-proxy` runs inside `kube-system` namespace
+    - Can check logs for it like any other pod `kubectl logs`
+        - `kubectl logs kube-porxy-XXXXX`
+
+3. Check kubernetes DNS
+    - Runs inside `kube-system` namespace
+    - `kubectl logs coredns-XXXXXX-XXXX`
+
+### `netshoot` Tool
+
+- Separate container that can test and gather information about network functionality
+- Image: `nicolaka/netshoot`
+- Variety of networking exploration and troubleshooting tools
+- More info: https://github.com/nicolaka/netshoot
+- **Steps**
+    1. Create the `netshoot` container
+        - Example: Basic `netshoot` pod
+            - ``
+                apiVersion: v1
+                kind: Pod
+                metadata:
+                  name: nginx-netshoot
+                spec:
+                  containers:
+                    - name: nginx
+                      image: nicolaka/netshoot
+                      command: ['sh', '-c', 'while ture; do sleep 5; done']
+              ``
+
+    2. Create `netshoot` container and use `kubectl exec` into `netshoot` container to explore network
+        - `kubectl exec -i -t netshoot -- /bin/sh`
+
+    3. Explore network
+        - `curl <NETWORK RESOURCE` - HTTP/HTTPS request
+        - `ping <NETWORK RESOURECE` - Check is something is up and reachable
+        - `nslookup <NETWORK RESOURECE>` - Get DNS info on a IP or FAQN URL
+        - `netstat`
+        - ... much more
 
 
 
@@ -1741,26 +1860,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Useful Linux Commands
+# Random
 
 - Setting Custom Hostname
     - `sudo hostnamectl set-hostname k8s-control`
@@ -1769,17 +1869,4 @@ Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
     - `sudo vim /etc/hosts`
     - Add private IPs for all servers
     - `<PRIVATE IP> <HOSTNAME>`
-
-
-
-
-
-
-# NOTES
-
-- Overview and learn `nslookup`
-    - Lookup DNS records
-    -
-
-
 
