@@ -5,14 +5,22 @@
 
 
 
-# Exam
+# Exam Outline
 
-- Kubernetes 1.23
+## Software
+
+- Kubernetes version: 1.23
 - Ubuntu 20.04
 - Terminal
-    - VIM v???
-    - tmux?
+- Tools available
+    - VIM - Text/Code editor
+    - tmux - Terminal multiplexor
+    - jq - Working with JSON format
+    - yq - Working with YAML format
 
+## Resources
+
+- Kubernetes Documentation
 
 
 # Basics
@@ -22,6 +30,8 @@
     - Container orchestration
     - Application reliability (self-healing)
     - Automation
+
+
 
 # Architecture
 
@@ -109,7 +119,8 @@ Perform these steps on both control and worker nodes. The following is on a Debi
    - `sudo sysctl --system`
 
 - Install **containerd**
-    - `sudo apt-get update && sudo apt-get install -y containerd`
+    - `sudo apt-get update`
+    - `sudo apt-get install -y containerd`
 
 - Create containerd configuration directory
     - `sudo mkdir -p /etc/containerd`
@@ -132,9 +143,10 @@ Perform these steps on both control and worker nodes.
     - `sudo cat /etc/fstab`
 
 - Install dependencies
-    - `sudo apt-get update && sudo apt-get install -y apt-transport-https curl`
+    - `sudo apt-get update`
+    - `sudo apt-get install -y apt-transport-https ca-certificates curl`
 
-- Add GPG key for the Kubernetes repository
+- Add Google Cloud public signing key to `apt` for the Kubernetes repository
     - `curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -`
 
 - Setup the Kubernetes repository entry in `apt`
@@ -148,7 +160,7 @@ Perform these steps on both control and worker nodes.
     - `sudo apt-get update`
 
 - Install Kubernetes tools `(note the version)`
-    - List of kubernetes versions: https://kubernetes.io/releases/
+    - List of Kubernetes versions: https://kubernetes.io/releases/
     - `sudo apt-get install -y kubelet=1.23.0-00 kubeadm=1.23.0-00 kubectl=1.23.0-00`
 
 - Prevent automatic updating of Kubernetes packages for more control
@@ -188,7 +200,7 @@ Run the following command on each Kubernetes node. Make sure to run as `sudo`
 
 
 
-# Namespaces
+# Namespaces (ns)
 
 Docs: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
 
@@ -209,7 +221,7 @@ Docs: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespac
 - Can specify where the command can run with `--namespace`
     - Example: `kubectl get pods --namespace my-namespace`
 
-- Can specify to look at all namespaces with `--all-namespaces`
+- Can specify to look at all namespaces with `--all-namespaces` (or `-A`)
     - Can be slow to complete
     - Example `kubectl get pods --all-namespaces`
 
@@ -217,7 +229,7 @@ Docs: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespac
     - `kubectl create namespace my-namespace`
 
 - Set a default namespace for all subsequent commands
-    - `kubectl config set-context --current --namespace=<insert-namespace-name-here>`
+    - `kubectl config set-context --current --namespace=<NAMESPACE-NAME>`
 
 
 
@@ -258,6 +270,8 @@ Interface and make it easier to setup or use Kubernetes.
 - `minicube`
     - Allows to automatically set up local single-node Kubernetes cluster
     - Great for quick development purposes
+    - Can add nodes
+    - Quickly start and stop a cluster
 
 - `kind`
     - Run local Kubernetes cluster using Docker
@@ -304,10 +318,15 @@ These commands are run on the control plane node.
     - `kubectl drain <CONTROL PLANE NODE NAME> --ignore-daemonsets`
 
 2. Upgrade `kubeadm` CLI tool
-    - `sudo apt-get update && sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00`
+    - `sudo apt-get update`
+    - `sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00`
 
 3. Plan the cluster upgrade
     - `sudo kubeadm upgrade plan v1.22.2`
+    - `sudo kubeadm upgrade plan` 
+        - Shows versions you can upgrade to
+        - Shows any component configs that require manual upgrade
+        - Automatically renews certificates that it manages on this node
 
 4. Apply the cluster upgrade
     - `sudo kubeadm upgrade apply -y v1.22.2`
@@ -324,13 +343,14 @@ These commands are run on the control plane node.
 ### Worker Node
 
 1. Drain node, putting it out of cluster services
-    - *This command is run on the control plane node*
+    - **This command is run on the control plane node**
     - `kubectl drain <WORKER NODE NAME> --ignore-daemonsets`
     - Same as the control plane node command for draining
     - May have to use `--force`
 
 2. Upgrade `kubeadm` CLI tool
-    - `sudo apt-get update && sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00`
+    - `sudo apt-get update`
+    - `sudo apt-get install -y --allow-change-held-packages kubeadm=1.22.2-00`
 
 3. Upgrade the `kubelet` configuration
     - `sudo kubeadm upgrade node`
@@ -338,7 +358,7 @@ These commands are run on the control plane node.
 4. Upgrade `kubelet` and `kubectl` CLI tools
 
 5. Uncordon the node, putting it back into cluster service
-    - *This command is run on the control plane node*
+    - **This command is run on the control plane node**
     - `kubectl uncordon <WORKER PLANE NODE NAME`
 
 
@@ -354,7 +374,7 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
     - Select API version with `ETCDCTL_API` environmental variable
     - `etcdctl get <KEY>` - Get a specific value for a key
 
-- etcd typically runs on port 2379
+- etcd typically runs on port `2379`
 
 - If TLS encryption, must specify certificates
     - Example: Looking up value for `cluster.name` key
@@ -399,10 +419,10 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
 
 - Usage: `kubectl [COMMAND] [OBJECT TYPE] [OBJECT NAME] [FLAGS]`
 
-- **Command: `kubectl api-resources`**
+- **`kubectl api-resources`**
     - List all available Kubernetes resource objects for current Kubernetes version.
 
-- **Command: `kubectl get`**
+- **`kubectl get ....`**
     - Get a list of available specified objects
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get
     - Some options:
@@ -413,23 +433,26 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
     - Examples:
         - `kubectl get pods`
         - `kubectl get pv -o wide`
+        - `kubectl get pods my-pod -o yaml > my-pod.yml`
 
-- **Command: `kubectl describe`**
+- **`kubectl describe ....`**
     - Show detailed and human readable information of a specific resource
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#describe
     - Examples:
         - `kubectl describe pods/nginx`
         - `kubectl describe -f pod.json` - Pod defined by `pod.json`
 
-- **Command: `kubectl create`**
+- **`kubectl create ....`**
     - Create a Kubernetes resource from file or stdin
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#create
     - If object exists, error occurs
+    - Can use `--dry-run=clinet`
     - Examples:
         - `kubectl create -f pod.yaml`
         - `cat pod.json | kubectl create --filename -`
+        - `kubectl create deployment my-dep --image alpine --dry-run=client -o yaml`
 
-- **Command: `kubectl apply`**
+- **`kubectl apply ....`**
     - Will create a new object or modify an existing one
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply
     - Will not throw error if object exists
@@ -437,7 +460,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - `kubectl apply -f pod.yaml`
         - `kubectl apply -k my-dir/` - Will look into `my-dir` directory for all resource configs
 
-- **Command: `kubectl delete`**
+- **`kubectl delete ....`**
     - Delete resources from cluster
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#delete
     - Can specify objects to delete form:
@@ -453,7 +476,7 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - `kubectl delete -f ./pod.yaml`
         - `kubectl delete pod some-pod --now`
 
-- **Command: `kubectl exec`**
+- **`kubectl exec ....`**
     - Execute a command in a container
     - Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#exec
     - Great for troubleshooting
@@ -481,60 +504,8 @@ Docs: https://kubernetes.io/docs/reference/kubectl/
         - `kubectl create deployment myi-deploytment image=nginx`
 
 
-## `kubectl` Tricks
 
-- Create a sample YAML file of the resource to modify later using `--dry-run -o yaml`
-    - Example: Console out the YAML file for a deployment
-        - `kubectl create deployment my-deployment --image=nginx --dry-run=client -o yaml`
-
-- Get the definition of a currenlty run pod
-    - `kubectl get pod <POD NAME> -o yaml > my-pod.yml`
-
-- Record a command using `--record` to add to the object's describe description.
-    - Allows for later review of object
-    - This will appear when using `describe` under `Annotations:`
-    - Example: `kubectl scale development my-development replicas=5 --record`
-    - **NOTE**: *This feature will be removed in future Kubernetes version*
-
-- Use sample/template resource YAML configuration as a base, then add to it
-    - Sample/templates can be found in the official Kubernetes docs.
-
-- Can edit an active resource object using `kubectl edit <RESOURCE TYPE> <RESOURCE NAME>`
-    - Will open a text editor (ie. VIM)
-    - Example: `kubectl edit deployment my-deployment`
-    - Example: `kubectl edit networkpolicy -n some-namespace my-networkpolicy`
-
-- Adding CLI command completion to shell
-    - `kubeadm completion bash >> .bashrc`
-    - `kubectl completion bash >> .bashrc`
-    - Reload current shell (`exec bash`) or open a new shell
-
-- Check reaching a pod/service from termporary pod
-    - Need to use simple busybox pod with curl installed
-    - Describe simple pod with `alpine` image
-    - ``
-        apiVersion: v1
-        kind: Pod
-        metadata:
-          name: curl-pod
-        spec:
-          containers:
-            - name: curl-pod
-              image: alpine
-              command: ['watch', 'ls']  # <-- Runs "ls" every 2 seconds
-      ``
-    - Run `wget` form this pod to other objects
-        - To other pod: `kubectl exec curl-pod -- wget -O - <POD IP>:<PORT OF POD>`
-        - To service: `kubectl exec curl-pod -- wget -O - <SERVICE NAME>:<ClusterIP PORT>`
-
-- Check DNS entries within a Pod
-    - `kubectl exec <POD NAME> -- nslookup <IP ADDRESS>`
-    - Example:
-        - `kubectl exec my-test-pod -- nslookup 10.104.162.248`
-        - Response shows the DNS entry for that IP address
-
-
-## Role-Based Access Control (RBAC) Authorization
+# Role-Based Access Control (RBAC) Authorization
 
 Role-based access control (RBAC) is a method of regulating access to resources based on
 the roles of individual users within the organization. Essentially, what users are allowed
@@ -543,56 +514,65 @@ to do and access within the cluster.
 Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
 
-### RBAC Objects
+## Role Objects
 
-1. **Role**
-    - Sets permissions within a particular namespace
-    - Can specify `namespace`
-    - Example: Role definition YAML file
-        - ``
-            apiVersion: rbac.authorization.k8s.io/v1
-            kind: Role
-            metadata:
-              namespace: default    # <-- Note namespace defined
-              name: pod-reader
-            rules:
-            - apiGroups: [""]       # <-- "" indicates the core API group
-              resources: ["pods", "pods/logs"]
-              verbs: ["get", "watch", "list"]
-          ``
+### Role
 
-2. **ClusterRole**
-    - Not namespace specific, cluster-wide
-    - Do not need to specify `namespace`
-
-3. **RoleBinding**
-    - Grants permission defined in a role to a user or set of users
-    - Holds a list of subjects (users, groups, or service accounts)
-    - Holds reference to the role being granted
-    - Can only reference an Role in the same namespace
-    - Can also reference a ClusterRole
-    - Example:
-        - ``
-            apiVersion: rbac.authorization.k8s.io/v1
-            kind: RoleBinding
-            metadata:
-              name: read-pods       # <-- Has to match the Role metadata.name
-              namespace: default
-            subjects:               # <-- You can specify more than one "subject"
-            - kind: User
-              name: jane            # <-- "name" is case sensitive
-              apiGroup: rbac.authorization.k8s.io
-            roleRef:                # <-- "roleRef" specifies the binding to Role/ClusterRole
-              kind: Role            # <-- This must be Role/ClusterRole
-              name: pod-reader      # <-- This must match the name of Role/ClusterRole
-              apiGroup: rbac.authorization.k8s.io
-            ``
-
-4. **ClusterRoleBinding**
-    - To bind a ClusterRole to all namespaces, use ClusterRoleBinding
+- Sets permissions within a particular namespace
+- Can specify `namespace`
+- Example: Role definition YAML file
+    - ``
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          namespace: default    # <-- Note namespace defined
+          name: pod-reader
+        rules:
+        - apiGroups: [""]       # <-- "" indicates the core API group
+          resources: ["pods", "pods/logs"]
+          verbs: ["get", "watch", "list"]
+      ``
 
 
-### User Permissions
+### ClusterRole
+
+- Not namespace specific, cluster-wide
+- Do not need to specify `namespace`
+
+
+### RoleBinding
+
+- Grants permission defined in a role to a user or set of users
+- Holds a list of subjects (users, groups, or service accounts)
+- Holds reference to the role being granted
+- Can only reference an Role in the same namespace
+- Can also reference a ClusterRole
+- Example:
+    - ``
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: read-pods       # <-- Has to match the Role metadata.name
+          namespace: default
+        subjects:               # <-- You can specify more than one "subject"
+        - kind: User
+          name: jane            # <-- "name" is case sensitive
+          apiGroup: rbac.authorization.k8s.io
+        roleRef:                # <-- "roleRef" specifies the binding to Role/ClusterRole
+          kind: Role            # <-- This must be Role/ClusterRole
+          name: pod-reader      # <-- This must match the name of Role/ClusterRole
+          apiGroup: rbac.authorization.k8s.io
+        ``
+
+
+### ClusterRoleBinding
+
+- To bind a ClusterRole to all namespaces, use ClusterRoleBinding
+
+
+
+
+## User Permissions
 
 
 ### Working With Permissions
@@ -624,7 +604,7 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
 
 
-## Service Accounts
+## Service Accounts (sa)
 
 Service account provides an identity for processes that run in a Pod.
 Users are authenticated to Kubernetes API with User Accounts, but processes in containers inside Pods
@@ -641,15 +621,21 @@ are authenticated a Service Accounts.
     - `kubectl create -f <SERVICE ACCOUNT CONFIG FILE>`
     - `kubectl create sa <NAME> -n <NAMESPACE>`
 - Example: Service account definition
-    - TODO
-
-
+    - ``
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: build-robot
+        automountServiceAccountToken: false
+      ``
 
 
 ## Inspecting Resource Usage
 
 Kubernetes Metrics Server
 - Need add-on to collect and provide metrics data about resources, pods, and containers
+- Need Metrics API for this
+    - Install: `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`
 - Once a metrics add-on is installed, can use `kubectl top` to view data about resource usage
   in pods and nodes.
     - `kubectl top pod --sort-by <JSONPATH> --selector <SELECTOR>`
@@ -673,96 +659,105 @@ Kubernetes Metrics Server
 
 Passing dynamic values to running applications/containers at runtime
 
-Ways of doing this:
 
-1. **ConfigMaps**
-    - Docs: https://kubernetes.io/docs/concepts/configuration/configmap/
-    - Store *non-confidential* data in key-value pair format
-    - Not designed for large data (1MB max)
-    - Pods and ConfigMaps must be in the same namespace
-    - Multiple pods can reference the same ConfigMap
-    - Updates to ConfigMaps reflect in pod that consume it
-        - Note: ConfigMaps consumed as env. vars are not updated automatically (require pod restart)
-    - ConfigMaps can be immutable, once created cannot be changed
-    - Pods can consume ConfigMaps with the following:
-        1. *Container Environmental variables*
-            - Example:
-                - ``
-                    kind: Pod
-                    ...
-                    spec:
-                      containers:
-                        - ...
-                          env:
-                            - name: MY_ENV_VAR
-                              valueFrom:
-                                configMapKeyRef:
-                                  name: my-configmap
-                                  key: myKey
-                    ...
-                   ``
-        2. *Container command-line arguments*
-        3. *Configuration files in a read-only volume*
-            - Top level key will be the filename
-            - Sub level keys will be placed inside the file
-            - Example:
-                - ``
-                    kind: Pod
-                    ...
-                    spec:
-                      volumes:
-                        - name: config-vol
-                          configMap:
-                            name: my-configmap
-                          ...
-                  ``
-    - Example ConfigMap definition:
-        - ``
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: app-config
-              namespace: default
-            data:
-              key1: value1
-              key2: value2
-              key3:
-                subkey:
-                  more_keys: data
-                  even_more: more data
-              key4: |
-                You can have
-                mulit-line
-                data.
-            immutable: false
-          ``
+###  ConfigMaps (cm)
 
-2. **Secrets**
-    - Docs: https://kubernetes.io/docs/concepts/configuration/secret/
-    - Object that has small amount of *sensitive data* (password, token, key, etc)
-    - Protected from creating, viewing, or editing pods
-    - Not designed for large data (1MB max)
-    - NOTE: By default, secrets are stored un-encrypted in data store (etcd)
-    - When creating a secret using YAML file, the secret itself **must base64 encoded**
-        - When secret is read by pod, it will be decoded
+- Docs: https://kubernetes.io/docs/concepts/configuration/configmap/
+- Store *non-confidential* data in key-value pair format
+- Not designed for large data (1MB max)
+- Pods and ConfigMaps must be in the same namespace
+- Multiple pods can reference the same ConfigMap
+- Updates to ConfigMaps reflect in pod that consume it
+    - Note: ConfigMaps consumed as env. vars are not updated automatically (require pod restart)
+- ConfigMaps can be immutable, once created cannot be changed
+- Example ConfigMap definition:
+    - ``
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: app-config
+          namespace: default
+        data:
+          key1: value1               # <-- Each key can have value
+          key2: value2
+          key3:                      # <-- Can have tree structure
+            subkey:
+              more_keys: data
+              even_more: more data
+          key4: |
+            You can have
+            mulit-line
+            data.
+          key5.blah: |               # <-- File-like keys
+            yo.cool=something
+            yo.moo=something
+        immutable: false
+      ``
+- Pods can consume ConfigMaps with the following:
+    1. **Container Environmental variables**
+        - Example:
+            - ``
+                kind: Pod
+                ...
+                spec:
+                  containers:
+                    - ...
+                      env:
+                        - name: MY_ENV_VAR        # <-- Visible env. var in container
+                          valueFrom:
+                            configMapKeyRef:
+                              name: my-configmap  # <-- Name of ConfigMap object
+                              key: myKey          # <-- The value to read
+                ...
+               ``
+    2. **Container command-line arguments**
+    3. **Configuration files in a read-only volume**
+        - Top level key will be the filename
+        - Sub level keys will be placed inside the file
+        - Example:
+            - ``
+                kind: Pod
+                ...
+                spec:
+                  volumes:
+                    - name: config-vol
+                      configMap:
+                        name: my-configmap
+                      ...
+              ``
+
+### Secrets
+
+- Docs: https://kubernetes.io/docs/concepts/configuration/secret/
+- Object that has small amount of *sensitive data* (password, token, key, etc)
+- Protected from creating, viewing, or editing pods
+- Not designed for large data (1MB max)
+- NOTE: By default, secrets are stored un-encrypted in data store (etcd)
+- When creating a secret using YAML file, the secret itself **must base64 encoded**
+    - When secret is read by pod, it will be decoded
         - Example: `echo -n "some secret text" | base64`
-    - Pods can use secrets
-        1. **As files in a volume mounted to the container**
-        2. **Container environmental variable**
-        3. **Image pull authentication to authenticate to image registry**
-    - Example Secret definition:
-        - ``
-            apiVersion: v1
-            kind: Secret
-            metadata:
-              name: my-secret
-            type: Opaque
-            data:
-                username: user
-                password: sd89sdfh/sd9f   # <-- base64 encoded text
-           ``
-    - Can load a secret from a file with declarative command
-        - `kubectl create secret generic my-secret --from-file <LOCAL FILENAME>`
+    - When reading a secret, it has to be decoded back
+        - Example: `echo "<ENCRYPTED TEXT>" | base64 -d`
+- Pods can use secrets (same as ConfigMaps)
+    1. **As files in a volume mounted to the container**
+    2. **Container environmental variable**
+    3. **Image pull authentication to authenticate to image registry**
+- Data can also be stored as clear text using `stringData` instead of `data`
+    - No `base64` encoding required
+- Example Secret definition:
+    - ``
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: my-secret
+        type: Opaque                          # <-- Arbitary user-defined data
+        data:
+            username: 97sdf9==                # <-- base64 encoded text
+            password: sd89sdfh/sd9f==         # <-- base64 encoded text
+        immutable: false                      # <-- Default value is false
+       ``
+- Can load a secret from a file with declarative command
+    - `kubectl create secret generic my-secret --from-file <LOCAL FILENAME>`
 
 
 
@@ -787,10 +782,10 @@ Ways of doing this:
               containers:
                 - name: busybox
                   image: busybox
-                  resources:           <-- Definition
+                  resources:               # <-- Definition
                     requests:
-                      cpu: "250m"      <-- 0.25 CPU cores
-                      memory: "128Mi"
+                      cpu: "250m"          # <-- 0.25 CPU cores
+                      memory: "128Mi"      # <-- 128Mi memory
           ``
 
 - **Resource Limits**
@@ -815,60 +810,67 @@ Kubernetes can automatically detect unhealthy containers by actively monitoring 
 
 Docs: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 
-- **Liveness Probe**
-    - Allow to automatically determine whether or not a container application is healthy
-    - Monitor container on an ongoing bases over the lifetime of the container
-    - By default, will consider container down if the container process stops
-    - This mechanism can be customized
-    - Different type of liveness probes available:
-        - `exec` - Run a command, if no error, success
-        - `httpGet` - If status code is over 200 and below 400, success
-        - `tcpSocket` - TCP check if port is open, if it is, success
-    - Example: `my-pod.yaml`
-        - ``
-            apiVersion: v1
-            kind: Pod
-            ...
-            spec:
-              containers:
-              - name: liveness
-                ...
-                livenessProbe:
-                  exec:                   # <-- exec type check
-                    command:              # <-- If command succeeds = healthy!
-                    - cat                 # <-- Command
-                    - /tmp/healthy        # <-- Arguments to command
-                  initialDelaySeconds: 5  # <-- Wait 5 seconds after container startup
-                  periodSeconds: 5        # <-- Run every 5 seconds
-          ``
 
-- **Startup Probe**
-    - Only run on container startup and stop once container is up and running.
-    - Can be useful on containers that have long startup times
-    - Example:
-        - ``
-            apiVersion: v1
-            kind: Pod
-            ...
-                  startupProbe:
-                    initialDelaySeconds: 1
-                    periodSeconds: 2
-                    timeoutSeconds: 1
-                    successThreshold: 1
-                    failureThreshold: 30      <-- Number of times allowed to fail
-                    httpGet:
-                      scheme: HTTP
-                      path: /
-                      httpHeaders:
-                        - name: Host
-                          value: myapplication1.com
-                      port: 80
-          ``
+### Liveness Probe
 
-- **Readiness Probe**
-    - Used to determine when container is ready to accept requests/traffic
-    - Traffic to a particular pod will not be send until all readiness checks have passed
-    - Readiness probe same as liveness and startup probe except: `readinessProbe:` block
+- Allow to automatically determine whether or not a container application is healthy
+- Monitor container on an ongoing bases over the lifetime of the container
+- By default, will consider container down if the container process stops
+- This mechanism can be customized
+- Different type of liveness probes available:
+    - `exec` - Run a command, if no error, success
+    - `httpGet` - If status code is over 200 and below 400, success
+    - `tcpSocket` - TCP check if port is open, if it is, success
+- Example: `my-pod.yaml`
+    - ``
+        apiVersion: v1
+        kind: Pod
+        ...
+        spec:
+          containers:
+          - name: liveness
+            ...
+            livenessProbe:
+              exec:                   # <-- exec type check
+                command:              # <-- If command succeeds = healthy!
+                - cat                 # <-- Command
+                - /tmp/healthy        # <-- Arguments to command
+              initialDelaySeconds: 5  # <-- Wait 5 seconds after container startup
+              periodSeconds: 5        # <-- Run every 5 seconds
+      ``
+
+
+### Startup Probe
+
+- Only run on container startup
+- Stops once container is up and running.
+- Can be useful on containers that have long startup times
+- Example:
+    - ``
+        apiVersion: v1
+        kind: Pod
+        ...
+              startupProbe:
+                initialDelaySeconds: 1
+                periodSeconds: 2
+                timeoutSeconds: 1
+                successThreshold: 1
+                failureThreshold: 30         # <-- Number of times allowed to fail
+                httpGet:                     # <-- Check HTTP endpoint
+                  scheme: HTTP
+                  path: /
+                  httpHeaders:
+                    - name: Host
+                      value: myapplication1.com
+                  port: 80
+      ``
+
+
+### Readiness Probe
+
+- Used to determine when container is ready to accept requests/traffic
+- Traffic to a particular pod will not be send until all readiness checks have passed
+- Readiness probe same as liveness and startup probe except: `readinessProbe:` block
 
 
 
@@ -889,7 +891,7 @@ Can view pod restart status with `kubectl get pod <POD NAME>`
             kind: Pod
             ...
             spec:
-              restartPolicy: Always     # <--
+              restartPolicy: Always     # <-- Note
               container:
                 ...
           ``
@@ -939,7 +941,7 @@ network and storage. Containers can interact with each other.
                     - name: sharedvol      # <-- Same shared volume
                       mountPath: /input    # <-- Mounted here in container
             volumes:
-              - name: sharedvol
+              - name: sharedvol            # <-- The volume that is shared
                 emptyDir: {}
       ``
 
@@ -953,9 +955,10 @@ Docs: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 - Run before any other containers in `containers` section
 - Must run to once and to completion
 - Run in the order they are listed
-- Used to setup the pod, install tooling, etc
-- Can container tasks and setup scripts not needed in the main containers
 - When starting a pod, status will read `Init` if currently running init container
+- Why?
+    - Can be used to setup the pod, install tooling/utility
+    - Can have container tasks and setup scripts not needed in the main containers
 - Possible use cases
     - Wait for another Kubernetes resource to be created before startup
     - Perform sensitive startup steps securely outside of app containers
@@ -1040,7 +1043,7 @@ In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes s
     - `kubectl get nodes`
 
 
-## DaemonSets
+## DaemonSets (ds)
 
 DaemonSets will automatically runs a copy of a Pod on each node in the cluster
 
@@ -1050,6 +1053,7 @@ Docs: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
 - Manages specified pods
 - Will respect scheduling rules (ie. labels, taints, tolerations)
 - Belong to `apiVersion: apps/v1`
+- Actual pod description is defined in `template`
 - Example: Single pod, single container in each node
     - ``
         apiVersion: apps/v1         # <-- NOTE
@@ -1137,7 +1141,8 @@ Docs: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
         ``
 - Can change the image of a Deployment without YAML
     - `kubectl set image deployments/<DEPLOYMENT NAME> <IMAGE NAME AND VERSION>`
-    - Example: `kubectl set image deployments/my-deployment nginx:1.16.1`
+    - Example:
+        - `kubectl set image deployments/my-deployment nginx:1.16.1`
 
 
 
@@ -1201,7 +1206,7 @@ Docs: https://www.ibm.com/docs/en/cloud-private/3.1.2?topic=networking-kubernete
 - Kubernetes services can expose application on Pod to be reachable outside of the cluster
 
 
-## Container Network Interface (CNI) Pugins
+## Container Network Interface (CNI) Plugins
 
 Docs: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/
 
@@ -1213,6 +1218,7 @@ Docs: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/
 - Nodes will remain in `NotReady` state until a network plugin is installed
 - Example network plugin installation
     - `kubectl apply -f <LOCAL FILE OR REMOTE URL YAML>`
+    - `kubectl apply -f https://docs.projectcalico.org/manifests/calico-typha.yaml`
 
 
 ## Domain Name System (DNS) in Kubernetes
@@ -1230,12 +1236,12 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
     - Automatically given domain name of the following form
         - `<POD IP>.<NAMESPACE NAME>.pod.cluster.local`
         - NOTE: Pod IP address `.` replaced by `-`
-        - Example: `192-168-10-100.default.pod.cluster.local`
-        - Another pod can communicate with this pod using this DNS name
+            - Example: `192-168-10-100.default.pod.cluster.local`
+        - Another pod can communicate with this pod using this DNS name from any namespace
     - More useful with kubernetes services
 
 
-## Network Policies
+## NetworkPolicies (netpol)
 
 Kubernetes object that allows you to control the flow of network communication to and from the Pods
 
@@ -1264,8 +1270,8 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/network-policies/
             matchLabels:
               role: db
           policyTypes:                   # <-- Should batch the sections below
-          - Ingress                      # <-- If "ingress" section omitted, no in traffic
-          - Egress                       # <-- If "egress" section omitted, no out traffic
+          - Ingress                      # <-- If "ingress" section omitted, no in-traffic
+          - Egress                       # <-- If "egress" section omitted, no out-traffic
           ingress:
           - from:                        # <-- "from" for ingress only
             - ipBlock:
@@ -1333,7 +1339,7 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/service/
 
 - Clients are not aware of Pods (creates abstraction)
 - Client traffic to a Kubernetes service is routed to its Pods in a load-balanced fashion
-    - *Client -> Service -> Pods in cluster*
+    - **Traffic**: *Client -> Service -> Endpoint -> Pods in cluster*
 - **Endpoints**
     - Backend entities to which services route traffic
     - Services that route to multiple Pods, each Pod has an endpoint for that Service
@@ -1345,67 +1351,74 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/service/
 
 How and where the Service will expose the application.
 
+
 ### ClusterIP (default)
-    - Expose applications *inside* the cluster network
-    - Clients will be other Pods within the cluster
-    - Pod --> Service --> Pods
-    - Can create a starting template:
-        - `kubectl create service clusterip svc-internal --tcp=80:80 --dry-run='client' -o yaml > svc-internal.yml`
-        - Remember, you can set up command completion, and use `--help`
-    - Example: Service exposed within a cluster
-        - ``
-            apiVersion: v1            # <-- Note
-            kind: Service
-            metadata:
-              name: svc-clusterip
-            spec:
-              type: ClusterIP         # <-- Can leave out, it is default anyways
-              selector:
-                app: svc-example      # <-- Locate and attach to Pods with this label
-              ports:                  # <-- Can have many ports
-                - protocol: TCP
-                  port: 80            # <-- Service listens on this port
-                  targetPort: 80      # <-- Port on Pods attached to this service
-          ``
+
+- Expose applications *inside* the cluster network
+- Clients will be other Pods within the cluster
+- **Traffic:** *Pod --> Service --> Endpoint --> Pods*
+- Can create a starting template:
+    - `kubectl create service clusterip svc-internal --tcp=80:80 --dry-run='client' -o yaml > svc-internal.yml`
+    - Remember, you can set up command completion, and use `--help`
+    - `--tcp=<INSIDE PORT>:<OUTSIDE TARGETPORT`
+- Example: Service exposed within a cluster
+    - ``
+        apiVersion: v1            # <-- Note
+        kind: Service
+        metadata:
+          name: svc-clusterip
+        spec:
+          type: ClusterIP         # <-- Can leave out, it is default anyways
+          selector:
+            app: svc-example      # <-- Locate and attach to Pods with this label
+          ports:                  # <-- Can have many ports
+            - protocol: TCP
+              port: 80            # <-- Service listens on this port (outside pod)
+              targetPort: 80      # <-- Port on Pods attached to this service (inside pod)
+      ``
+
 
 ### NodePort
-    - Expose application *outside* the cluster network
-    - Applications or users are accessing application from outside the cluster
-    - Can be accessed using the Node's IP address (ie. `<NODE IP>:<NodePort>`
-    - Kubernetes allocates a port from a range of (default: 30000-32767) to service
-        - Same port on every Node
-        - For example, port 30020, on all Nodes running the Service
-        - Can specify with `nodePort` key
-    - Can create a starting template:
-        - `kubectl create service nodeport svc-external --tcp=80:80 --dry-run=client -o yaml > svc-external.yml`
-        - Remember, you can set up command completion, and use `--help`
-    - Example: Service exposed outside a cluster
-        - ``
-            apiVersion: v1
-            kind: Service
-            metadata:
-              name: my-service
-            spec:
-              type: NodePort        # <-- Note
-              selector:
-                app: MyApp
-              ports:
-                  # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
-                - port: 80          # <-- Service listens on this port
-                  targetPort: 80    # <-- Ports on Pods attached to this service
-                  nodePort: 30007   # <-- Exposed port on nodes. Optional, by default chosen 30000-32767
-          ``
+
+- Expose application *outside* the cluster network
+- Applications or users are accessing application from outside the cluster
+- Can be accessed using the Node's host IP address (ie. `<NODE IP>:<NodePort>`
+- Kubernetes allocates a port from a range of (default: 30000-32767) to service
+    - *Same port on every Node*
+    - For example, port 30020, on all Nodes running the Service
+    - Can specify with `nodePort` key
+- Can create a starting template:
+    - `kubectl create service nodeport svc-external --tcp=80:80 --dry-run=client -o yaml > svc-external.yml`
+    - Remember, you can set up command completion, and use `--help`
+- Example: Service exposed outside a cluster
+    - ``
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: my-service
+        spec:
+          type: NodePort        # <-- NOTE
+          selector:
+            app: MyApp
+          ports:
+              # By default and for convenience, the `targetPort` is set to the same value as the `port` field.
+            - port: 80          # <-- Service listens on this port (outside pod)
+              targetPort: 80    # <-- Ports on Pods attached to this service (inside pod)
+              nodePort: 30007   # <-- Exposed port on nodes. Optional, by default chosen 30000-32767 (outside cluster)
+      ``
+
 
 ### LoadBalancer
     - Expose applications *outside* of cluster network
     - Use external cloud load balancer
     - Only works with cloud platforms (ie. AWS) that include load balancing
-    - Client -> LoadBalancer -> Cluster/Service -> Pod
+    - **Traffic:**: *Client -> LoadBalancer -> Cluster/Service -> Endpoint -> Pod*
 
 ### ExternalName
     - No proxying of any kind is set up
     - Maps Service to contents of `externalName` field (ie. foo.bar.example.com)
-    - *Not covered in CKA exam*
+    - **Not covered in CKA exam**
+
 
 
 
@@ -1423,22 +1436,22 @@ locate them
         - `my_service.default.svc.cluster.local`
         - `my_service.testing.svc.my_company.com`
 - FQDN can be reached form any Namespace in the entire cluster
-- Pods within the **same** Namespace can simply use the service name
+- **NOTE**: Pods within the **same** Namespace can simply use the service name
+    - Example: `curl my-service`
 
 
 
-## Access From Outside with Kubernetes Ingress
+## Ingress (ing)
 
 Docs: https://kubernetes.io/docs/concepts/services-networking/ingress/
 
 - Ingress (incoming) is a Kubernetes object that manages external access to Services in the cluster
 - Typically HTTP of HTTPS routes from the outside of the cluster
-- More functionality than a simple `NodePort` Service
+- *More functionality than a simple `NodePort` Service*
 - Can manage SSL termination, advanced load balancing, or name-based virtual hosting
+- **Traffic:** *Client -> Ingress -> Service -> Endpoint -> Pods*
 - Can create starting template:
     `kubectl create ingress <NAME> --path:<SERVICE>:<PORT> [OPTIONS]`
-- Example:
-    - **Client -> Ingress -> Service -> Pods**
 - Define a set of **routing rules**
     - Routing rule properties determine to which requests it applies to
     - Each routing rule has set of **paths** that corresponds to a backend service
@@ -1479,12 +1492,15 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/ingress/
     - `Exact` - Matches URL path exactly and is case sensitive
     - `Prefix` - Mataches based on URL path prefix split by `/`. (ie. `/yo` matches `/yo/blah`)
 
+
 ### Ingress Controllers
 
 Docs: https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/
 
 - Ingress objects can't do anything themselves
 - Must have one or more *Ingress Controllers*
+- Used with *Ingress Class*
+    - https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class
 - Variety of Ingress Controllers, with different implementation methods for external access to Service
 - Commonly and easily installed with Helm Charts
 - Can add annotations to Ingress object referencing Ingress Controller functionality
@@ -1565,6 +1581,7 @@ Various volumes types support storage methods such as:
 - Kubernetes ConfigMaps and Secrets
 - Simple directory on the cluster Nodes
 
+
 ### Common Volume Types
 
 - `hostPath`
@@ -1612,7 +1629,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
   using Storage Classes
 - `storageClassName` references a `StorageClass` object
 - `persistentVolumeReclaimPolicy` determines how the storage resources can be reused when the
-  PersistentVolume's associated PersistentVolumeClaims are delted
+  PersistentVolume's associated PersistentVolumeClaims are deleted
     - `Retain` - Keep all data. Manual clean up and prepare for reuse
     - `Recycle` - Delete all data. Basic scrub (`rm -rf /my-volume/*`)
     - `Delete` - Associated storage asset is deleted (only for cloud resources)
@@ -1633,7 +1650,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
           storageClassName: localdisk             # <-- References a StorageClass
           persistentVolumeReclaimPolicy: Recycle  # <-- Scrub and reuse
           capacity:
-            storage: 1Gi                          # <-- Total available to claim
+            storage: 1Gi                          # <-- Total available to be able to claim
           accessModes:
             - ReadWriteOnce                       # <-- Must match PersistentVolumeClaim!
           hostPath:                               # <-- Type of storage
@@ -1676,11 +1693,10 @@ Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
 ### PersistentVolumeClaim (pvc)
 
 - Request for storage by a user.
-- PersistentVolumeClaims consume PersistentVolume resources
+- PersistentVolumeClaims consume and bind to PersistentVolume resources
 - References Order:
-    - **Pod -> Persistent Volume Claim -> Persistent Volume -> External Storage**
+    - **Pod -> PersistentVolumeClaim -> PersistentVolume -> StorageClass -> External Storage**
     - Define/Create in reverse!
-
 - Claims can request specific storage size and access modes
 - PersistentVolume and PersistentVolumeClaims are bound
 - Will look for PersistentVolume that is able to meet requested criteria
@@ -1760,7 +1776,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
     - Enable: `sudo systemctl enable kubelet`
 
 
-## Cluster Pod is having problems
+## Cluster System Pod is having problems
 
 `kubeadm` cluster, several kubernetes components run as pods in `kube-system` namespace
 
@@ -1779,7 +1795,7 @@ Can check logs for Kubernetes related services on each node using `journalctl`
 `SHIFT-g` to jump to the end of logs
 
 
-## Cluster component logs
+## Cluster Component Logs
 
 Kubernetes cluster components have log output redirected to `/var/log`
 
@@ -1791,7 +1807,7 @@ Note, `kubeadm` clusters may not have these components because components run in
 In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
 
 
-## Applications
+## Application Issues
 
 1. Getting status
     - `kubectl get pod`
@@ -1801,15 +1817,16 @@ In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
     - `kubectl exec <POD NAME> -c <CONTAINER NAME> -- <COMMAND>`
 
 3. Interactive shell inside the pod container
-    - `kubectl exec <POD NAME> -c <CONTAINER NAME> -i -t -- /bin/sh`
+    - `kubectl exec <POD NAME> -c <CONTAINER NAME> -i -t -- sh`
 
 4. Get container logs
     - `kubectl logs <POD NAME> -c <CONTAINER NAME>`
 
 
-## Networking
+## Networking Issues
 
 1. Check if kubernetes networking plugin is up and running
+    - `kubectl get pods --all-namespaces`
 
 2. Check `kube-proxy`
     -`kube-proxy` runs inside `kube-system` namespace
@@ -1838,22 +1855,81 @@ In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
                   containers:
                     - name: nginx
                       image: nicolaka/netshoot
-                      command: ['sh', '-c', 'while ture; do sleep 5; done']
+                      command: ['sh', '-c', 'watch ls']
               ``
 
     2. Create `netshoot` container and use `kubectl exec` into `netshoot` container to explore network
-        - `kubectl exec -i -t netshoot -- /bin/sh`
+        - `kubectl exec -i -t netshoot -- sh`
 
     3. Explore network
-        - `curl <NETWORK RESOURCE` - HTTP/HTTPS request
-        - `ping <NETWORK RESOURECE` - Check is something is up and reachable
+        - `curl <NETWORK RESOURCE>` - HTTP/HTTPS request
+        - `ping <NETWORK RESOURECE>` - Check is something is up and reachable
         - `nslookup <NETWORK RESOURECE>` - Get DNS info on a IP or FAQN URL
         - `netstat`
+        - `python3`
         - ... much more
 
 
 
 
+
+# Tips and Tricks
+
+- Create a sample YAML file of the resource to modify later using `--dry-run -o yaml`
+    - Example: Console out the YAML file for a deployment
+        - `kubectl create deployment my-deployment --image=nginx --dry-run=client -o yaml`
+
+- Get the definition of a currently run pod
+    - `kubectl get pod <POD NAME> -o yaml > my-pod.yml`
+
+- Record a command using `--record` to add to the object's describe description.
+    - **NOTE**: *This feature will be removed in future Kubernetes version*
+    - Allows for later review of object
+    - This will appear when using `describe` under `Annotations:`
+    - Example: `kubectl scale development my-development replicas=5 --record`
+
+- Use sample/template resource YAML configuration as a base, then add to it
+    - Sample/templates can be found in the official Kubernetes docs.
+
+- Can edit an active resource object using `kubectl edit <RESOURCE TYPE> <RESOURCE NAME>`
+    - Will open a text editor (ie. VIM)
+    - Example: `kubectl edit deployment my-deployment`
+    - Example: `kubectl edit networkpolicy -n some-namespace my-networkpolicy`
+
+- Adding CLI command completion to shell
+    - `kubeadm completion bash >> .bashrc`
+    - `kubectl completion bash >> .bashrc`
+    - Reload current shell (`exec bash`) or open a new shell
+
+- Check reaching a pod/service from temporary pod
+    - Need pod with curl installed
+    - Describe simple pod with `nikolaka/netshoot` image
+    - ``
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: netshoot
+        spec:
+          containers:
+            - name: netshoot
+              image: nicolaka/netshoot
+              command: ['watch', 'ls']     # <-- Runs "ls" every 2 seconds
+      ``
+    - if `curl` is not there, run `wget` form this pod to other objects
+        - To other pod: `kubectl exec curl-pod -- wget -O - <POD IP>:<PORT OF POD>`
+        - To service: `kubectl exec curl-pod -- wget -O - <SERVICE NAME>:<ClusterIP PORT>`
+
+- Check DNS entries within a Pod
+    - `kubectl exec <POD NAME> -- nslookup <IP ADDRESS>`
+    - Example:
+        - `kubectl exec my-test-pod -- nslookup 10.104.162.248`
+        - Response shows the DNS entry for that IP address
+
+- Get specific field form YAML output using `yq`
+    - `<COMMAND> -o yaml | yq r - <TOP LEVEL KEY>.<SUB KEY>.<SO ON>`
+    - Example:
+        - `kubectl get secret credentials -n demo -o yaml | yq r - data.password`
+        - Note, in this case for secret, need `| base64 -d`
 
 
 
