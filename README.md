@@ -81,8 +81,8 @@
   - [Volume Types](#volume-types)
     - [Common Volume Types](#common-volume-types)
   - [Persistent Volumes](#persistent-volumes)
-    - [PersistantVolume (pv)](#persistantvolume-pv)
     - [StorageClass (sc)](#storageclass-sc)
+    - [PersistantVolume (pv)](#persistantvolume-pv)
     - [PersistentVolumeClaim (pvc)](#persistentvolumeclaim-pvc)
 - [Troubleshooting](#troubleshooting)
   - [Kubernetes API server down](#kubernetes-api-server-down)
@@ -111,6 +111,7 @@
     - tmux - Terminal multiplexor
     - jq - Working with JSON format
     - yq - Working with YAML format
+    - base64 - Tool to convert to and from base 64
 
 ## Resources
 
@@ -470,20 +471,21 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
 
 - etcd typically runs on port `2379`
 
-- If TLS encryption, must specify certificates
-    - Example: Looking up value for `cluster.name` key
-        - ```bash
-            ETCDCTL_API=3 etcdctl get cluster.name \
-              --endpoints=https://10.0.1.101:2379 \
-              --cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
-              --cert=/home/cloud_user/etcd-certs/etcd-server.crt \
-              --key=/home/cloud_user/etcd-certs/etcd-server.key
-          ```
+- **Important:** Set environmental variable for `etcd` version
+    - `export ETCDCTL_API=3`
+
 
 - Back up data
     - Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
-    - `ETCDCTL_API=3 etcdctl --endpoints $ENDPOINT snapshot save <FILE NAME>`
-        - Here `$ENDPOINT` is a list of host addresses for etcd servers
+    - For HTTPS communication, must specify certificates
+        - .crt, .key, .pem/crt
+    - For `--endpoints`, can be IP, or DNS name
+    - ```bash
+        etcdctl snapshot save /home/me/etcd_backup.db \
+          --endpoints=https://etcd1:2379 \
+          --cert=etcd-server.crt  \
+          --key=etcd-server.key  \
+          --cacert=etcd-ca.pem 
     - Stop etcd
         - `sudo systemctl stop etcd`
     - Remove existing etcd data
@@ -492,9 +494,9 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
 - Restore the data
     - Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster
     - Creates a new logical cluster
-    - `ETCDCTL_API=3 etcdctl snapshot restore <FILE NAME>`
+    - `etcdctl snapshot restore <FILE NAME>`
     - Example:
-        - `ETCDCTL_API=3 etcdctl --endpoints 10.2.0.9:2379 snapshot restore snapshotdb`
+        - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
     - Set ownership
         - `sudo chown -R etcd:etcd /var/lib/etcd`
     - Start etcd
@@ -1503,15 +1505,17 @@ How and where the Service will expose the application.
 
 
 ### LoadBalancer
-    - Expose applications *outside* of cluster network
-    - Use external cloud load balancer
-    - Only works with cloud platforms (ie. AWS) that include load balancing
-    - **Traffic:**: *Client -> LoadBalancer -> Cluster/Service -> Endpoint -> Pod*
+
+- Expose applications *outside* of cluster network
+- Use external cloud load balancer
+- Only works with cloud platforms (ie. AWS) that include load balancing
+- **Traffic:**: *Client -> LoadBalancer -> Cluster/Service -> Endpoint -> Pod*
 
 ### ExternalName
-    - No proxying of any kind is set up
-    - Maps Service to contents of `externalName` field (ie. foo.bar.example.com)
-    - **Not covered in CKA exam**
+
+- No proxying of any kind is set up
+- Maps Service to contents of `externalName` field (ie. foo.bar.example.com)
+- **Not covered in CKA exam**
 
 
 
@@ -1523,7 +1527,7 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
 - Kubernetes assigns DNS names to Services, allowing applications within the cluster to easily
 locate them
 - DNS query in different namespaces may return different results
-- Fully Qualified Domain Name (FQDN) has the following format:
+- Service Fully Qualified Domain Name (FQDN) has the following format:
     - `<SERVICE NAME>.<NAMESPACE NAME>.svc.<CLUSTER DOMAIN>`
     - Default `<CLUSTER DOMAIN>` is `cluster.local`
     - Examples:
@@ -1543,6 +1547,7 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/ingress/
 - Typically HTTP of HTTPS routes from the outside of the cluster
 - *More functionality than a simple `NodePort` Service*
 - Can manage SSL termination, advanced load balancing, or name-based virtual hosting
+- Can set up more advanced routing to multiple services
 - **Traffic:** *Client -> Ingress -> Service -> Endpoint -> Pods*
 - Can create starting template:
     `kubectl create ingress <NAME> --path:<SERVICE>:<PORT> [OPTIONS]`
@@ -1561,7 +1566,7 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/ingress/
                 - http:
                     paths:
                       - path: /somepath       # <-- When this path is requested
-                        pathType: Prefix
+                        pathType: Prefix      # <-- Type of URL matching
                         backend:
                           service:
                             name: my-service  # <-- Route to this service, can be ClusterIP-based
@@ -1599,17 +1604,18 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/ingress-controller
 - Commonly and easily installed with Helm Charts
 - Can add annotations to Ingress object referencing Ingress Controller functionality
 - Most have UI with them available
-- **Example:** NGINX Ingress Controller (https://kubernetes.github.io/ingress-nginx/)
-    - Does not require third-party modules to run
-    - Simplest to set up and use
-    - Best for beginners
-    - Does not support dynamic design, reload needed after endpoint change
-- **Example:** Traefik (https://traefik.io/)
-    - Support for TCP, HTTP, HTTPS, and GRPC
-    - Supports round-robin and weighted round-robin for load balancing
-    - Supports *Let's Encrypt*
-    - Setup requires setting up ServiceAccount, ClusterRole, Deployment for Traefik
-- **Example:** Istio (https://istio.io/)
+- Some available Ingress Controllers:
+    1. NGINX Ingress Controller (https://kubernetes.github.io/ingress-nginx/)
+        - Does not require third-party modules to run
+        - Simplest to set up and use
+        - Best for beginners
+        - Does not support dynamic design, reload needed after endpoint change
+    2. Traefik (https://traefik.io/)
+        - Support for TCP, HTTP, HTTPS, and GRPC
+        - Supports round-robin and weighted round-robin for load balancing
+        - Supports *Let's Encrypt*
+        - Setup requires setting up ServiceAccount, ClusterRole, Deployment for Traefik
+    3. Istio (https://istio.io/)
 
 
 
@@ -1686,6 +1692,15 @@ Various volumes types support storage methods such as:
         - `Socket`
         - more
     - `path` is the directory on the Node
+    - **Example**: Volume defined in Pod
+        - ```yaml
+          ...
+          volumes:
+              - name: config-vol
+                hostPath:
+                    path: /data     # <-- Name where volume is mounted
+                    type: Directory
+          ```
 - `emptyDir: {}`
     - Directory that exists only as long as the Pod exists on the Node
     - Directory and its data are deleted when Pod is removed
@@ -1695,6 +1710,7 @@ Various volumes types support storage methods such as:
     - Provide ConfigMaps name in the volume section
     - **Example**:
         - ```yaml
+          ...
           volumes:
             - name: config-vol
               configMap:
@@ -1709,7 +1725,41 @@ Various volumes types support storage methods such as:
 
 ## Persistent Volumes
 
-Allows treating storage as an abstract resource
+- Allows treating storage as an abstract resource.
+- References Order:
+    - **Pod -> PersistentVolumeClaim -> PersistentVolume -> StorageClass -> External Storage**
+    - Define/Create in reverse!
+
+### StorageClass (sc)
+
+Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
+
+- Allows admins to specify types of storage services offered on their platform
+- Different `parameters` may be accepted depending on the `provisioner`
+    - Example: For provisioner `kubernetes.io/aws-ebs` we can have the following
+        - ```yaml
+            provisioner: kubernetes.io/aws-ebs
+            parameters:
+              type: io1
+              iopsPerGB: "10"
+              fsType: ext4
+          ```
+- Use case could include creating a low-performance and high-performance storage type
+- Kubernetes users can then choose StorageClass that fit need of application
+- `allowVolumeExpansion` determines whether or not the StorageClass supports the ability to resize
+  volumes after they are created
+    - If set to `false` and try to resize, will get an error
+    - By default, set to `false`
+- If not StorageClass is created, one will be automatically be created
+- **Example:** Storage Class for local storage
+    - ```yaml
+        apiVersion: storage.k8s.io/v1              # <-- Note
+        kind: StorageClass
+        metadata:
+          name: localdisk
+        provisioner: kubernetes.io/no-provisioner  # <-- Type of service/platorm/provider
+        allowVolumeExpansion: true                 # <-- Volume can be resized after creation
+      ```
 
 
 ### PersistantVolume (pv)
@@ -1749,38 +1799,6 @@ Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
             - ReadWriteOnce                       # <-- Must match PersistentVolumeClaim!
           hostPath:                               # <-- Type of storage
             path: /var/output
-      ```
-
-
-### StorageClass (sc)
-
-Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
-
-- Allows admins to specify types of storage services offered on their platform
-- Different `parameters` may be accepted depending on the `provisioner`
-    - Example: For provisioner `kubernetes.io/aws-ebs` we can have the following
-        - ```yaml
-            provisioner: kubernetes.io/aws-ebs
-            parameters:
-              type: io1
-              iopsPerGB: "10"
-              fsType: ext4
-          ```
-- Use case could include creating a low-performance and high-performance storage type
-- Kubernetes users can then choose StorageClass that fit need of application
-- `allowVolumeExpansion` determines whether or not the StorageClass supports the ability to resize
-  volumes after they are created
-    - If set to `false` and try to resize, will get an error
-    - By default, set to `false`
-- If not StorageClass is created, one will be automatically be created
-- **Example:** Storage Class for local storage
-    - ```yaml
-        apiVersion: storage.k8s.io/v1              # <-- Note
-        kind: StorageClass
-        metadata:
-          name: localdisk
-        provisioner: kubernetes.io/no-provisioner  # <-- Type of service/platorm/provider
-        allowVolumeExpansion: true                 # <-- Volume can be resized after creation
       ```
 
 
