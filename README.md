@@ -107,12 +107,15 @@ https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.22.pdf
 - Kubernetes version: 1.23
 - Ubuntu 20.04
 - Terminal
+    - Bash
+    - [killer.sh](https://killer.sh/) exam simulator
 - Tools available
-    - VIM - Text/Code editor
-    - tmux - Terminal multiplexor
-    - jq - Working with JSON format
-    - yq - Working with YAML format
-    - base64 - Tool to convert to and from base 64
+    - `vim` - Text/Code editor
+    - `tmux` - Terminal multiplexor
+    - `jq` - Working with JSON format
+    - `yq` - Working with YAML format
+    - `base64` - Tool to convert to and from base 64
+    - more ...
 
 ## Resources
 
