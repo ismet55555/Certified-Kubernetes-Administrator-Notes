@@ -443,7 +443,8 @@ These commands are run on the control plane node.
 
 1. Drain node, putting it out of cluster services
     - **This command is run on the control plane node**
-    - `kubectl drain <WORKER NODE NAME> --ignore-daemonsets`
+    - `kubectl drain <WORKER NODE NAME> --ignore-daemonsets --force`
+      - `--force` in case of stand-alone pods
     - Same as the control plane node command for draining
     - May have to use `--force`
 
@@ -1351,13 +1352,14 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/network-policies/
 - Can isolate the Pod from traffic that is not needed
 - **By default, pods are considered non-isolated and completely open to all traffic**
 - NetworkPolicy can apply to Ingress (incoming), Egress (outgoing), or both types of network traffic
-    - Ingress traffic => `from`
-    - Egress traffic => `to`
+    - Ingress traffic => `from` section
+    - Egress traffic => `to` section
     - Can use different selectors for `from` and `to`
         1. `podSelector` - Traffic from and to specific pods
         2. `namespaceSelector` - Traffic from and to specific namespaces
         3. `ipBlock` - Traffic from a specific IP range using CIDR notation (ie. 10.0.1.0/16)
     - `port` - Specify one or more ports that will allow traffic, includes protocol (ie. `TCP`)
+- Can attach label to namespace and use `namespaceSelector.matchLabels` to apply the policy to specific namespace
 - Example:
     - ```yaml
         apiVersion: networking.k8s.io/v1   # <-- Note
@@ -1810,6 +1812,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 
 - Request for storage by a user.
 - PersistentVolumeClaims consume and bind to PersistentVolume resources
+- **NOTE: PersistentVolumeClaim must be in the same namespace as the pod using it**
 - References Order:
     - **Pod -> PersistentVolumeClaim -> PersistentVolume -> StorageClass -> External Storage**
     - Define/Create in reverse!
