@@ -250,9 +250,7 @@ Perform these steps on both control and worker nodes.
 
 - Setup the Kubernetes repository entry in `apt`
     - ```bash
-        cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
-        deb https://apt.kubernetes.io/ kubernetes-xenial main
-        EOF
+        echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
       ```
 
 - Fetch newly added repository information
@@ -296,6 +294,27 @@ has not been configured yet. For this we need a seperate networking plugin.
 Run the following command on each Kubernetes node. Make sure to run as `sudo`
 
 - `sudo kubeadm join <REST OF COMMAND>`
+
+
+## `minikube` Cluster
+
+`minikube` is local Kubernetes, focusing on making it easy to learn and develop for Kubernetes.
+
+- Installation
+  - https://minikube.sigs.k8s.io/docs/start/
+  - ```bash
+    curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+    sudo install minikube-linux-amd64 /usr/local/bin/minikube
+    ```
+
+- Usage
+  - Start the cluster: `minikube start`
+  - Stop the cluster: `minikube stop`
+  - Delete the cluster: `minikube delete`
+  - Add a control plane node: `minikube node add --control-plane`
+  - Add a worker node: `minikube node add --worker`
+  - Delete a node: `minikube node delete`
+  - Show the dashboard: `minikube dashboard`
 
 
 
