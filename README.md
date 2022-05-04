@@ -193,6 +193,9 @@ methods here. The different method depend on how and where Kubernetes is set up.
 
 ## `containerd` Installation (if needed)
 
+Docs: https://kubernetes.io/docs/setup/production-environment/container-runtimes/#containerd
+
+`containerd` is a container runtime (as is Docker), that is needed on each kubernetes node to deal with containers.
 Perform these steps on both control and worker nodes. The following is on a Debian-based system.
 
 - Load needed kernel modules (ensures when system starts up, modules will be enables)
@@ -264,8 +267,9 @@ Perform these steps on both control and worker nodes.
     - `sudo apt-mark hold kubelet kubeadm kubectl`
 
 
-# Setup / Initialization of Cluster Using `kubeadm`
+## `kubeadm` Cluster
 
+Setting up a cluster using `kubeadm`
 Perform these steps on the control node.
 
 - Initialize the cluster
