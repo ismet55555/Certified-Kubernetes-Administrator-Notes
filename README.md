@@ -231,7 +231,7 @@ Perform these steps on both control and worker nodes. The following is on a Debi
     - `sudo systemctl restart containerd`
 
 
-## Kubernetes Installation
+## `kubelet`, `kubeadm`, and `kubectl` CLI tools
 
 Perform these steps on both control and worker nodes.
 
@@ -264,7 +264,7 @@ Perform these steps on both control and worker nodes.
     - `sudo apt-mark hold kubelet kubeadm kubectl`
 
 
-# Setup / Initialization
+# Setup / Initialization of Cluster Using `kubeadm`
 
 Perform these steps on the control node.
 
