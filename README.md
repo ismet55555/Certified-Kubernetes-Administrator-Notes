@@ -495,12 +495,12 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
 - Need to use `etcdctl` CLI tool
     - Select API version with `ETCDCTL_API` environmental variable
     - `etcdctl get <KEY>` - Get a specific value for a key
+    - `etcdctl --endpoints=$ENDPOINTS endpoint health` - Check all `etcd` endpoint health
 
 - etcd typically runs on port `2379`
 
 - **Important:** Set environmental variable for `etcd` version
     - `export ETCDCTL_API=3`
-
 
 - Back up data
     - Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
@@ -512,7 +512,9 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
           --endpoints=https://etcd1:2379 \
           --cert=etcd-server.crt  \
           --key=etcd-server.key  \
-          --cacert=etcd-ca.pem 
+          --cacert=etcd-ca.pem
+    - Verify snapshot
+        - `etcdctl --write-out=table snapshot status /home/me/etcd_backup.db`
     - Stop etcd
         - `sudo systemctl stop etcd`
     - Remove existing etcd data
