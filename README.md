@@ -193,6 +193,9 @@ methods here. The different method depend on how and where Kubernetes is set up.
 
 ## `containerd` Installation (if needed)
 
+Docs: https://kubernetes.io/docs/setup/production-environment/container-runtimes/#containerd
+
+`containerd` is a container runtime (as is Docker), that is needed on each kubernetes node to deal with containers.
 Perform these steps on both control and worker nodes. The following is on a Debian-based system.
 
 - Load needed kernel modules (ensures when system starts up, modules will be enables)
@@ -231,7 +234,7 @@ Perform these steps on both control and worker nodes. The following is on a Debi
     - `sudo systemctl restart containerd`
 
 
-## Kubernetes Installation
+## `kubelet`, `kubeadm`, and `kubectl` CLI tools
 
 Perform these steps on both control and worker nodes.
 
@@ -264,8 +267,9 @@ Perform these steps on both control and worker nodes.
     - `sudo apt-mark hold kubelet kubeadm kubectl`
 
 
-# Setup / Initialization
+## `kubeadm` Cluster
 
+Setting up a cluster using `kubeadm`
 Perform these steps on the control node.
 
 - Initialize the cluster
@@ -492,39 +496,56 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
 - Need to use `etcdctl` CLI tool
     - Select API version with `ETCDCTL_API` environmental variable
     - `etcdctl get <KEY>` - Get a specific value for a key
+    - `etcdctl --endpoints=$ENDPOINTS endpoint health` - Check all `etcd` endpoint health
 
 - etcd typically runs on port `2379`
 
 - **Important:** Set environmental variable for `etcd` version
     - `export ETCDCTL_API=3`
 
+## Back Up `etcd` Database
 
-- Back up data
-    - Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
-    - For HTTPS communication, must specify certificates
-        - .crt, .key, .pem/crt
-    - For `--endpoints`, can be IP, or DNS name
-    - ```bash
-        etcdctl snapshot save /home/me/etcd_backup.db \
-          --endpoints=https://etcd1:2379 \
-          --cert=etcd-server.crt  \
-          --key=etcd-server.key  \
-          --cacert=etcd-ca.pem 
-    - Stop etcd
-        - `sudo systemctl stop etcd`
-    - Remove existing etcd data
-        - `sudo rm -rf /var/lib/etcd`
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
 
-- Restore the data
-    - Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster
-    - Creates a new logical cluster
-    - `etcdctl snapshot restore <FILE NAME>`
-    - Example:
-        - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
-    - Set ownership
-        - `sudo chown -R etcd:etcd /var/lib/etcd`
-    - Start etcd
-        - `sudo systemctl start etcd`
+- For HTTPS communication, must specify certificates
+    - .crt, .key, .pem/crt
+
+- HTTPS Communication Example: 
+  - ```bash
+    etcdctl snapshot save /home/me/etcd_backup.db \
+      --endpoints=https://etcd1:2379 \
+      --cert=/path/to/file/server.crt  \
+      --key=/path/to/file/server.key  \
+      --cacert=/path/to/file/ca.crt
+
+  - For `--endpoints`, can be IP, or DNS name
+
+  - For HTTP communication `--cert`, `--key`, and `--cacert` are not needed
+
+  - Encryption cert values can be found using in command section of `kubectl -n kube-system describe pod etcd-controlplane`
+    - `--cacert`: `--trusted-ca-file` -> `/path/to/file/<SOMETHING>.crt`
+    - `--cert`: `--cert-file` -> `/path/to/file/<SOMETHING>.crt`
+    - `--key`: `--key-file` -> `/path/to/file/<SOMETHING>.key`
+- Verify database snapshot
+    - `etcdctl --write-out=table snapshot status /home/me/etcd_backup.db`
+
+
+## Restore `etcd` Database
+
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster
+
+- Stop `etcd` service
+    - `sudo systemctl stop etcd`
+- Remove existing `etcd` database
+    - `sudo rm -rf /var/lib/etcd`
+- Creates a new logical cluster
+- `etcdctl snapshot restore <FILE NAME>`
+- Example:
+    - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
+- Set ownership
+    - `sudo chown -R etcd:etcd /var/lib/etcd`
+- Start etcd
+    - `sudo systemctl start etcd`
 
 
 
@@ -1163,6 +1184,50 @@ In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes s
     - `kubectl get nodes`
 
 
+### Taints and Tollerations
+
+Taints applied to a node allow a node to repel a set of pods. Tollerations applied 
+to pods allow pods to be scheduled onto nodes with matching taints. (Think pods tollerate a taint)
+
+Docs: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+
+- Usages
+  - Dedicated nodes exclusive for a set of users or services
+  - Nodes with special hardware (ie. GPUs)
+
+- **Taint** on Nodes
+  - Taints have a key, value, and effect
+  - Key and value are like regular labels applied to resources
+  - Effect can be one of the following:
+    - `NoSchedule` - Pod scheduling is not allowed on node
+    - `PreferNoSchedule` - Cluster will **try** to avoid placing a pod on this node
+    - `NoExecute` - If pod is already running on node, keep it there
+  - Tainting one single node:
+    - `kubectl train nodes my-node-1 my-key=my-value:NoSchedule`
+  - View taints on all nodes:
+    - `kubectl get nodes --output custom-columns=NODE_NAME:.metadata.name,TAINTS:.spec.taints`
+  - View taint of single node
+    - `kubectl describe node my-node-1 | grep -i taint`
+
+- **Tolleration** on Pods
+  - A pod can overcome a node taint by tollerating the node taint
+  - ```yaml
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      ...
+    spec:
+      containers:
+        ...
+      tolerations:
+        - key: "my-key"           # <-- Matching taint key
+          operator: "Equal"       # <-- Operator can be "Equal" or "Exists"
+          value: "my-value"       # <-- If operator is "Equal", value is needed
+          effect: "NoSchedule"    # <-- Node taint effect to tollerate
+    ```
+
+
+
 ## DaemonSets (ds)
 
 DaemonSets will automatically runs a copy of a Pod on each node in the cluster
@@ -1760,6 +1825,9 @@ Various volumes types support storage methods such as:
 Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
 
 - Allows admins to specify types of storage services offered on their platform
+- **When specifying a StorageClass, a PersistentVolume does not need to be specified,
+  PersistentVolumes are automatically created by the StorageClass**
+  - PersistentVolumeClaims can reference a StorageClass and automatically create a PersistantVolume
 - Different `parameters` may be accepted depending on the `provisioner`
     - Example: For provisioner `kubernetes.io/aws-ebs` we can have the following
         - ```yaml
