@@ -502,34 +502,49 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
 - **Important:** Set environmental variable for `etcd` version
     - `export ETCDCTL_API=3`
 
-- Back up data
-    - Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
-    - For HTTPS communication, must specify certificates
-        - .crt, .key, .pem/crt
-    - For `--endpoints`, can be IP, or DNS name
-    - ```bash
-        etcdctl snapshot save /home/me/etcd_backup.db \
-          --endpoints=https://etcd1:2379 \
-          --cert=etcd-server.crt  \
-          --key=etcd-server.key  \
-          --cacert=etcd-ca.pem
-    - Verify snapshot
-        - `etcdctl --write-out=table snapshot status /home/me/etcd_backup.db`
-    - Stop etcd
-        - `sudo systemctl stop etcd`
-    - Remove existing etcd data
-        - `sudo rm -rf /var/lib/etcd`
+## Back Up `etcd` Database
 
-- Restore the data
-    - Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster
-    - Creates a new logical cluster
-    - `etcdctl snapshot restore <FILE NAME>`
-    - Example:
-        - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
-    - Set ownership
-        - `sudo chown -R etcd:etcd /var/lib/etcd`
-    - Start etcd
-        - `sudo systemctl start etcd`
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster
+
+- For HTTPS communication, must specify certificates
+    - .crt, .key, .pem/crt
+
+- HTTPS Communication Example: 
+  - ```bash
+    etcdctl snapshot save /home/me/etcd_backup.db \
+      --endpoints=https://etcd1:2379 \
+      --cert=/path/to/file/server.crt  \
+      --key=/path/to/file/server.key  \
+      --cacert=/path/to/file/ca.crt
+
+  - For `--endpoints`, can be IP, or DNS name
+
+  - For HTTP communication `--cert`, `--key`, and `--cacert` are not needed
+
+  - Encryption cert values can be found using in command section of `kubectl -n kube-system describe pod etcd-controlplane`
+    - `--cacert`: `--trusted-ca-file` -> `/path/to/file/<SOMETHING>.crt`
+    - `--cert`: `--cert-file` -> `/path/to/file/<SOMETHING>.crt`
+    - `--key`: `--key-file` -> `/path/to/file/<SOMETHING>.key`
+- Verify database snapshot
+    - `etcdctl --write-out=table snapshot status /home/me/etcd_backup.db`
+
+
+## Restore `etcd` Database
+
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster
+
+- Stop `etcd` service
+    - `sudo systemctl stop etcd`
+- Remove existing `etcd` database
+    - `sudo rm -rf /var/lib/etcd`
+- Creates a new logical cluster
+- `etcdctl snapshot restore <FILE NAME>`
+- Example:
+    - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
+- Set ownership
+    - `sudo chown -R etcd:etcd /var/lib/etcd`
+- Start etcd
+    - `sudo systemctl start etcd`
 
 
 
