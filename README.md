@@ -1823,6 +1823,9 @@ Various volumes types support storage methods such as:
 Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
 
 - Allows admins to specify types of storage services offered on their platform
+- **When specifying a StorageClass, a PersistentVolume does not need to be specified,
+  PersistentVolumes are automatically created by the StorageClass**
+  - PersistentVolumeClaims can reference a StorageClass and automatically create a PersistantVolume
 - Different `parameters` may be accepted depending on the `provisioner`
     - Example: For provisioner `kubernetes.io/aws-ebs` we can have the following
         - ```yaml
