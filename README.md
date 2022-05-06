@@ -1183,6 +1183,50 @@ In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes s
     - `kubectl get nodes`
 
 
+### Taints and Tollerations
+
+Taints applied to a node allow a node to repel a set of pods. Tollerations applied 
+to pods allow pods to be scheduled onto nodes with matching taints. (Think pods tollerate a taint)
+
+Docs: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+
+- Usages
+  - Dedicated nodes exclusive for a set of users or services
+  - Nodes with special hardware (ie. GPUs)
+
+- **Taint** on Nodes
+  - Taints have a key, value, and effect
+  - Key and value are like regular labels applied to resources
+  - Effect can be one of the following:
+    - `NoSchedule` - Pod scheduling is not allowed on node
+    - `PreferNoSchedule` - Cluster will **try** to avoid placing a pod on this node
+    - `NoExecute` - If pod is already running on node, keep it there
+  - Tainting one single node:
+    - `kubectl train nodes my-node-1 my-key=my-value:NoSchedule`
+  - View taints on all nodes:
+    - `kubectl get nodes --output custom-columns=NODE_NAME:.metadata.name,TAINTS:.spec.taints`
+  - View taint of single node
+    - `kubectl describe node my-node-1 | grep -i taint`
+
+- **Tolleration** on Pods
+  - A pod can overcome a node taint by tollerating the node taint
+  - ```yaml
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      ...
+    spec:
+      containers:
+        ...
+      tolerations:
+        - key: "my-key"           # <-- Matching taint key
+          operator: "Equal"       # <-- Operator can be "Equal" or "Exists"
+          value: "my-value"       # <-- If operator is "Equal", value is needed
+          effect: "NoSchedule"    # <-- Node taint effect to tollerate
+    ```
+
+
+
 ## DaemonSets (ds)
 
 DaemonSets will automatically runs a copy of a Pod on each node in the cluster
