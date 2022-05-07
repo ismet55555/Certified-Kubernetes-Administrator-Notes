@@ -43,6 +43,7 @@
     - [Working With Permissions](#working-with-permissions)
   - [Service Accounts (sa)](#service-accounts-sa)
   - [Inspecting Resource Usage](#inspecting-resource-usage)
+  - [User API Authentication with Certificate](#user-api-authentication-with-certificate)
 - [Pods and Containers](#pods-and-containers)
   - [Application Configuration](#application-configuration)
     - [ConfigMaps (cm)](#configmaps-cm)
@@ -77,6 +78,7 @@
     - [NodePort](#nodeport)
     - [LoadBalancer](#loadbalancer)
     - [ExternalName](#externalname)
+  - [Imperatively Creating a Service](#imperatively-creating-a-service)
   - [Service DNS Names](#service-dns-names)
   - [Ingress (ing)](#ingress-ing)
     - [Ingress Controllers](#ingress-controllers)
@@ -794,6 +796,45 @@ Kubernetes Metrics Server
     - `kubectl get --raw /apis/metrics.k8s.io/`
 
 
+## User API Authentication with Certificate
+
+This is needed if the cluster uses HTTPS communication. These steps must come before creating
+a role or rolebinding for the user.
+
+Docs (General): https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/
+Docs: https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/#normal-user
+
+1. If not provided, create a PKI private key and Certificate Signing Request (CSR)
+  - `openssl genrsa -out my-user.key 2048`
+  - `openssl req -new -key my-user.key -out my-user.csr`
+
+2. Encrypt and copy the contents of `.csr` file
+  - `cat my-user.csr | base64 | tr -d "\n"`
+
+3. Create a CertificateSigningRequest kubernetes resource
+  - ```yaml
+    apiVersion: certificates.k8s.io/v1
+    kind: CertificateSigningRequest
+    metadata:
+      name: my-user              # <-- User this aplies to
+    spec:
+      request: <BASE64 ENCRYPTED VALUE OF .csr FILE> 
+      signerName: kubernetes.io/kube-apiserver-client
+      expirationSeconds: 86400   # <-- 24 hours in seconds
+      usages:
+      - client auth              # < -- Must abe this value
+    ```
+4. Create the CertificateSigningRequest resource
+  - `kubectl create -f my-user-csr.yaml`
+
+5. Approve the user certifiacte request for the cluster
+  - `kubectl get csr` --> Request should be pending for this user
+  - `kubectl certificate approve my-user`
+
+6. Check if user can make an API request
+  - `kubectl get pod --as my-user`
+  - `kubectl auth can-i get list --as my-user`
+
 
 
 
@@ -1126,17 +1167,17 @@ Docs: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
       ```
 
 - Example: Wait for a service
-    -```
-        apiVersion: v1
-        kind: Pod
-        ...
-        spec:
-        ...
-          initContainers:
-            - name: my-init-container
-              image: busybox:1.28
-              command: ['sh', '-c', "until nslookup my-service; do echo waiting for my-service; sleep 2; done"]
-     ```
+    - ```yaml
+      apiVersion: v1
+      kind: Pod
+      ...
+      spec:
+      ...
+        initContainers:
+          - name: my-init-container
+            image: busybox:1.28
+            command: ['sh', '-c', "until nslookup my-service; do echo waiting for my-service; sleep 2; done"]
+      ```
 
 
 
@@ -1279,6 +1320,10 @@ Docs: https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
 - Pod definition (YAML or JSON) is placed in a specific place on the node where kubelet will pick it up
     - This location is configurable
     - Default: `/etc/kubernetes/manifests/`
+    - If not default, can find location with the `kubelet` configuration:
+      - `ps -aux | grep kubelet`
+      - Config file location will be in `--config` value (ie. `--config=/vara/lib/kubelet/config.yaml`)
+      - `cat <CONFIG FILE> | grep -i static`
     - May need root permission to add files here
 - Kubelet will automatically create "mirror Pod" which acts to make the Pod visible to 
   Kubernetes API server (But can't manage via API server)
@@ -1568,6 +1613,7 @@ How and where the Service will expose the application.
       ```
 
 
+
 ### NodePort
 
 - Expose application *outside* the cluster network
@@ -1612,6 +1658,23 @@ How and where the Service will expose the application.
 - **Not covered in CKA exam**
 
 
+## Imperatively Creating a Service
+
+Docs: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#expose
+
+- A service can be created and automatically attached via a single command
+  - Example: Exposing a pod with ClusterIP
+    - ```bash
+      kubectl expose pod my-pod --name my-service --type ClusterIP
+      ```
+  - Example: Exposing a deploymentw with NodePort
+    - ```bash
+      kubectl expose deployment my-deploy --name my-service --type NodePort
+      ```
+- You can also create a starter template for a service to work from
+  - ```bash
+    kubectl expose pod my-pod --name my-service --type NodePort --dry-run=client --output yaml
+    ```
 
 
 ## Service DNS Names
@@ -1639,12 +1702,14 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/ingress/
 
 - Ingress (incoming) is a Kubernetes object that manages external access to Services in the cluster
 - Typically HTTP of HTTPS routes from the outside of the cluster
-- *More functionality than a simple `NodePort` Service*
+- *More functionality than a simple service exposing `NodePort` on each node*
 - Can manage SSL termination, advanced load balancing, or name-based virtual hosting
 - Can set up more advanced routing to multiple services
+- Can consolidate multiple routing rules into one single resource exposing multiple services
+  under the same IP address
 - **Traffic:** *Client -> Ingress -> Service -> Endpoint -> Pods*
 - Can create starting template:
-    `kubectl create ingress <NAME> --path:<SERVICE>:<PORT> [OPTIONS]`
+    - `kubectl create ingress <NAME> --path:<SERVICE>:<PORT> [OPTIONS]`
 - Define a set of **routing rules**
     - Routing rule properties determine to which requests it applies to
     - Each routing rule has set of **paths** that corresponds to a backend service
@@ -1823,6 +1888,8 @@ Various volumes types support storage methods such as:
 - References Order:
     - **Pod -> PersistentVolumeClaim -> PersistentVolume -> StorageClass -> External Storage**
     - Define/Create in reverse!
+    - Note, if StorageClass is defined, PersistentVolume can be dynamically allocated and does
+      not have to be defined.
 
 ### StorageClass (sc)
 
