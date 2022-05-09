@@ -127,6 +127,59 @@
     - more ...
 
 
+## Exam Environment Setup
+
+### Terminal Shortcuts/Aliases
+
+The following are useful terminal shortcut aliases/shortcuts to use during the exam.
+They are in the format of `alias <SHORTCUT>='<SHORTCUT CODE>'`
+
+Type the following into the terminal:
+
+- `alias k='kubectl` - So you don't have to write out the word `kubectl` (Most general and most useful)
+  - Example: `k get nodes -o wide`
+- `alias kd='kubectl delete --force --grace-period=0` - For fast deletion of resource
+  - Example: `kd pod my-pod`
+- `alias kc-dry='kubectl create --dry-run=client -o yaml` - Create a YAML tamplate of resource
+  - Example: `kc-dry pod my-pod`
+- `alias kr-dry='kubectl run --dry-run=client -o yaml` - Run but only create YAML template of resource
+  - Example: `kr-dry my-pod --image=nginx`
+
+### Terminal Command Completion
+
+The following is useful so that you can use the TAB key to auto-complete a command, allowing you to
+not always have to remember the exact keyword or spelling.
+
+Type the following into the terminal:
+
+- `kubectl completion bash >> ~/.bashrc` - `kubectl` command completion
+- `kubeadm completion bash >> ~/.bashrc` - `kubeadm` command completion
+- `exec $SHELL` - Reload shell to enable all added completion
+
+### VIM
+
+The exam will have VIM or nano terminal text editor tools available. If you are using
+VIM ensure that you know the basics:
+
+- `vim my-file.yaml` - If file exists, open it, else create it for editing
+- `:w` - Save
+- `:x` - Save and exit
+- `:q` - Exit
+- `:q!` - Exit without saving
+- `i` - Insert mode, regular text editor mode
+- `v` - Visual mode for selection
+- `ESC` - Normal mode
+
+### `tmux`
+
+`tmux` will allow you to use multiple terminal windows in one (aka terminla multiplexing).
+Make sure you know the basics for `tmux` usage:
+
+- TODO
+- More (if needed): https://gist.github.com/ismet55555/f78cecaab16d7a0acf786ab6b11c7d56
+
+
+
 ## Preperation
 
 ### Study Resources
@@ -141,6 +194,7 @@
 - [killer.sh Practice questions and environment](https://killer.sh/cka)
 - [Practice questions YouTube series](https://youtu.be/uSbqo4X9Zoo)
 - [GitHub gist of parctive questions](https://gist.github.com/texasdave2/8f4ce19a467180b6e3a02d7be0c765e7)
+- [CKAD-Practice-Questions](https://github.com/bbachi/CKAD-Practice-Questions)
 
 
 
