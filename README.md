@@ -104,11 +104,14 @@
 
 <!-- /code_chunk_output -->
 
+# Exam
 
-# Exam Outline
+## Outline
 
-https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.22.pdf
-## Software
+- https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.22.pdf
+
+
+## Software / Environment
 
 - Kubernetes version: 1.23
 - Ubuntu 20.04
@@ -123,18 +126,22 @@ https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.22.pdf
     - `base64` - Tool to convert to and from base 64
     - more ...
 
-## Resources
 
-- Kubernetes Documentation
+## Preperation
 
+### Study Resources
 
-# Basics
+- [Official Kubernetes Documentation](https://kubernetes.io/docs/home/)
+- [A Cloud Guru Course with Practice Exam](https://acloudguru.com/course/certified-kubernetes-administrator-cka)
+- [The Kubernetes Book - Nigel Poulton](https://www.amazon.com/Kubernetes-Book-Nigel-Poulton/dp/1521823634)
+- [CKA Tips and Tricks](https://youtu.be/TJSAcwUP0pE)
 
-- Kubernetes (k8s)
-    - Definition: Portable, extensible, open-source platform for managing containerized workloads and services, that facilitates both declarative configuration and automation.
-    - Container orchestration
-    - Application reliability (self-healing)
-    - Automation
+### Practice
+- [Play with Kubernetes](https://labs.play-with-k8s.com/)
+- [killer.sh Practice questions and environment](https://killer.sh/cka)
+- [Practice questions YouTube series](https://youtu.be/uSbqo4X9Zoo)
+- [GitHub gist of parctive questions](https://gist.github.com/texasdave2/8f4ce19a467180b6e3a02d7be0c765e7)
+
 
 
 
