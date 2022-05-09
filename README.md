@@ -1322,7 +1322,7 @@ Docs: https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
     - Default: `/etc/kubernetes/manifests/`
     - If not default, can find location with the `kubelet` configuration:
       - `ps -aux | grep kubelet`
-      - Config file location will be in `--config` value (ie. `--config=/vara/lib/kubelet/config.yaml`)
+      - Config file location will be in `--config` value (ie. `--config=/var/lib/kubelet/config.yaml`)
       - `cat <CONFIG FILE> | grep -i static`
     - May need root permission to add files here
 - Kubelet will automatically create "mirror Pod" which acts to make the Pod visible to 
