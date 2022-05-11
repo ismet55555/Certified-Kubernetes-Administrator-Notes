@@ -162,8 +162,9 @@ The exam will have VIM or nano terminal text editor tools available. If you are 
 VIM ensure that you create a `~/.vimrc` file and add the following:
 
 ```vimrc
-set ts=4 sw=2        # <-- Setting tab width
-set ai expandtab     # <-- Setting autoindent and use spaces, not tabs
+set ts=4 sw=2        " <-- Setting tab width
+set ai expandtab     " <-- Setting autoindent and use spaces, not tabs
+set mouse=a          " <-- Enable mouse support
 ```
 
 Also know VIM basics:
