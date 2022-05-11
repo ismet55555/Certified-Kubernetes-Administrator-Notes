@@ -134,7 +134,7 @@
 The following are useful terminal shortcut aliases/shortcuts to use during the exam.
 They are in the format of `alias <SHORTCUT>='<SHORTCUT CODE>'`
 
-Type the following into the terminal:
+Add the following to the `~/.bashrc` file:
 
 - `alias k='kubectl` - So you don't have to write out the word `kubectl` (Most general and most useful)
   - Example: `k get nodes -o wide`
@@ -159,7 +159,14 @@ Type the following into the terminal:
 ### VIM
 
 The exam will have VIM or nano terminal text editor tools available. If you are using
-VIM ensure that you know the basics:
+VIM ensure that you create a `~/.vimrc` file and add the following:
+
+```vimrc
+set ts=4 sw=2        # <-- Setting tab width
+set ai expandtab     # <-- Setting autoindent and use spaces, not tabs
+```
+
+Also know VIM basics:
 
 - `vim my-file.yaml` - If file exists, open it, else create it for editing
 - `:w` - Save
@@ -169,6 +176,7 @@ VIM ensure that you know the basics:
 - `i` - Insert mode, regular text editor mode
 - `v` - Visual mode for selection
 - `ESC` - Normal mode
+
 
 ### `tmux`
 
