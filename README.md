@@ -134,16 +134,24 @@
 The following are useful terminal shortcut aliases/shortcuts to use during the exam.
 They are in the format of `alias <SHORTCUT>='<SHORTCUT CODE>'`
 
-Add the following to the `~/.bashrc` file:
+Add the following to the end of `~/.bashrc` file:
 
-- `alias k='kubectl` - So you don't have to write out the word `kubectl` (Most general and most useful)
-  - Example: `k get nodes -o wide`
-- `alias kd='kubectl delete --force --grace-period=0` - For fast deletion of resource
-  - Example: `kd pod my-pod`
-- `alias kc-dry='kubectl create --dry-run=client -o yaml` - Create a YAML tamplate of resource
-  - Example: `kc-dry pod my-pod`
-- `alias kr-dry='kubectl run --dry-run=client -o yaml` - Run but only create YAML template of resource
-  - Example: `kr-dry my-pod --image=nginx`
+```bashrc
+alias k='kubectl           # <-- Most general and useful shortcut!
+
+alias kd='kubectl delete --force --grace-period=0      # <-- Fast deletion of resources
+
+alias kc="kubectl create"                              # <-- Create a resource
+alias kc-dry='kubectl create --dry-run=client -o yaml  # <-- Create a YAML template of resource
+
+alias kr='kubectl run'                                 # <-- Run/Create a resource (typically pod)
+alias kr-dry='kubectl run --dry-run=client -o yaml     # <-- Create a YAML template of resource
+```
+
+The following are some example usages:
+  - `k get nodes -o wide`
+  - `kr-dry my-pod --image=nginx --command sleep 36000`
+
 
 ### Terminal Command Completion
 
@@ -184,8 +192,15 @@ Also know VIM basics:
 `tmux` will allow you to use multiple terminal windows in one (aka terminla multiplexing).
 Make sure you know the basics for `tmux` usage:
 
-- TODO
-- More (if needed): https://gist.github.com/ismet55555/f78cecaab16d7a0acf786ab6b11c7d56
+> NOTE: `CTRL + b` is the prefix to anything in `tmux`
+
+- `tmux` - Turn and enter `tmux`
+- `CTRL + b  "` - Split the window vertically (line is horizontal)
+- `CTRL + b  %` - Split the window horizontally (line is vertical)
+- `CTRL + b  <ARROW KEY>` - Switch between window panes
+- `CTRL + b (hold)  <ARROW KEY>` - Resize current window pane
+- `CTRL + d` or `exit` - Close a window pane
+- ... More (if needed): https://gist.github.com/ismet55555/f78cecaab16d7a0acf786ab6b11c7d56
 
 
 
