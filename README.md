@@ -132,12 +132,11 @@
 ### Terminal Shortcuts/Aliases
 
 The following are useful terminal shortcut aliases/shortcuts to use during the exam.
-They are in the format of `alias <SHORTCUT>='<SHORTCUT CODE>'`
 
 Add the following to the end of `~/.bashrc` file:
 
 ```bashrc
-alias k='kubectl           # <-- Most general and useful shortcut!
+alias k='kubectl                                       # <-- Most general and useful shortcut!
 
 alias kd='kubectl delete --force --grace-period=0      # <-- Fast deletion of resources
 
@@ -150,6 +149,7 @@ alias kr-dry='kubectl run --dry-run=client -o yaml     # <-- Create a YAML templ
 
 The following are some example usages:
   - `k get nodes -o wide`
+  - `kc deploymentmy my-dep --image=nginx --replicas=3`
   - `kr-dry my-pod --image=nginx --command sleep 36000`
 
 
