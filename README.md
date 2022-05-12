@@ -6,10 +6,17 @@
 
 <!-- code_chunk_output -->
 
-- [Exam Outline](#exam-outline)
-  - [Software](#software)
-  - [Resources](#resources)
-- [Basics](#basics)
+- [Exam](#exam)
+  - [Outline](#outline)
+  - [Software / Environment](#software-environment)
+  - [Exam Environment Setup](#exam-environment-setup)
+    - [Terminal Shortcuts/Aliases](#terminal-shortcutsaliases)
+    - [Terminal Command Completion](#terminal-command-completion)
+    - [VIM](#vim)
+    - [`tmux`](#tmux)
+  - [Preperation](#preperation)
+    - [Study Resources](#study-resources)
+    - [Practice](#practice)
 - [Architecture](#architecture)
   - [Control Plane](#control-plane)
   - [Nodes](#nodes)
@@ -100,7 +107,6 @@
   - [Networking Issues](#networking-issues)
     - [`netshoot` Tool](#netshoot-tool)
 - [Tips and Tricks](#tips-and-tricks)
-- [Random](#random)
 
 <!-- /code_chunk_output -->
 
@@ -2292,19 +2298,3 @@ In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
     - Example:
         - `kubectl get secret credentials -n demo -o yaml | yq r - data.password`
         - Note, in this case for secret, need `| base64 -d`
-
-
-
-
-
-
-# Random
-
-- Setting Custom Hostname
-    - `sudo hostnamectl set-hostname k8s-control`
-
-- Set up host file
-    - `sudo vim /etc/hosts`
-    - Add private IPs for all servers
-    - `<PRIVATE IP> <HOSTNAME>`
-
