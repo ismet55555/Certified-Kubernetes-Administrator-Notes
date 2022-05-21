@@ -107,6 +107,8 @@
   - [Networking Issues](#networking-issues)
     - [`netshoot` Tool](#netshoot-tool)
 - [Tips and Tricks](#tips-and-tricks)
+- [JSONPath](#jsonpath)
+  - [Example 1: Get Single Value](#example-1-get-single-value)
 
 <!-- /code_chunk_output -->
 
@@ -118,6 +120,8 @@
 
 
 ## Software / Environment
+
+> As of 05/2022
 
 - Kubernetes version: 1.23
 - Ubuntu 20.04
@@ -176,9 +180,17 @@ The exam will have VIM or nano terminal text editor tools available. If you are 
 VIM ensure that you create a `~/.vimrc` file and add the following:
 
 ```vimrc
-set ts=4 sw=2        " <-- Setting tab width
-set ai expandtab     " <-- Setting autoindent and use spaces, not tabs
+set ts=4             " <-- tabstop - how many spaces is \t worth
+set sw=2             " <-- shiftwidth - how many spaces is indentation
+set et               " <-- expandtab - Use spaces, never \t values
+set ai               " <-- autoindent - VIM knows where to indent
 set mouse=a          " <-- Enable mouse support
+```
+
+Or simply:
+
+```vimrc
+set ts=2 sw=2 et ai mouse=a
 ```
 
 Also know VIM basics:
@@ -195,7 +207,7 @@ Also know VIM basics:
 
 ### `tmux`
 
-`tmux` will allow you to use multiple terminal windows in one (aka terminla multiplexing).
+`tmux` will allow you to use multiple terminal windows in one (aka terminal multiplexing).
 Make sure you know the basics for `tmux` usage:
 
 > NOTE: `CTRL + b` is the prefix to anything in `tmux`
@@ -333,9 +345,11 @@ Perform these steps on both control and worker nodes. The following is on a Debi
 
 ## `kubelet`, `kubeadm`, and `kubectl` CLI tools
 
+Docs: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
+
 Perform these steps on both control and worker nodes.
 
-- Disable system swap memory. WHY???
+- Disable system swap memory to utilize all of the node's resources
     - `sudo swapoff -a`
 
 - Check system `fstab` file for any entries that will turn swap back on
@@ -359,6 +373,7 @@ Perform these steps on both control and worker nodes.
 - Install Kubernetes tools `(note the version)`
     - List of Kubernetes versions: https://kubernetes.io/releases/
     - `sudo apt-get install -y kubelet=1.23.0-00 kubeadm=1.23.0-00 kubectl=1.23.0-00`
+    - Note: To install latest versions, omit the verison specifier (ie. `kubelet` without the `=1.23.0.00`)
 
 - Prevent automatic updating of Kubernetes packages for more control
     - `sudo apt-mark hold kubelet kubeadm kubectl`
@@ -366,27 +381,38 @@ Perform these steps on both control and worker nodes.
 
 ## `kubeadm` Cluster
 
+Docs: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
+
 Setting up a cluster using `kubeadm`
 Perform these steps on the control node.
 
 - Initialize the cluster
-    - `sudo kubeadm init --pod-network-cidr 192.168.0.0/16 --kubernetes-version 1.23.0`
+    - `sudo kubeadm init`
+    - Can specify the IP [CIDR range](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing): `--pod-network-cidr 192.168.0.0/16`
+    - Can specify k8s version: `--kubernetes-version 1.23.0`
     - Running this will provide a set of commands for further setup
 
-- From the previous command output, run the following
+- From the previous command output, run the following. This commmand is to make `kubectl` work
+  for non-root user.
     - `mkdir -p $HOME/.kube`
     - `sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config`
     - `sudo chown $(id -u):$(id -g) $HOME/.kube/config`
 
-- Verify clusters is working
+- Verify clusters nodes are there
     - `kubectl get nodes`
 
 A this point the cluster is running, however it is in a `NotReady` status, because networking
 has not been configured yet. For this we need a seperate networking plugin.
 
-- Setting up Calico networking and network security plugin via a remote YAML file
-    - https://projectcalico.docs.tigera.io/about/about-calico
-    - `kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml`
+- Setting up a network security plugin via a remote YAML file
+    - Can only install one network plugin for your cluster
+    - Either one of these can work:
+        - Calico
+            - https://projectcalico.docs.tigera.io/about/about-calico
+            - `kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml`
+        - Flannel
+            - https://github.com/flannel-io/flannel
+           - `kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml`
 
 - Get a node join command to use on nodes to add to cluster
     - `kubeadm token create --print-join-command`
@@ -400,6 +426,8 @@ Run the following command on each Kubernetes node. Make sure to run as `sudo`
 ## `minikube` Cluster
 
 `minikube` is local Kubernetes, focusing on making it easy to learn and develop for Kubernetes.
+`minikube` allows you set up a local kubernetes cluster with one or many nodes. Each node is 
+a Docker container.
 
 - Installation
   - https://minikube.sigs.k8s.io/docs/start/
@@ -408,7 +436,7 @@ Run the following command on each Kubernetes node. Make sure to run as `sudo`
     sudo install minikube-linux-amd64 /usr/local/bin/minikube
     ```
 
-- Usage
+- Useful `minikube` commands
   - Start the cluster: `minikube start`
   - Stop the cluster: `minikube stop`
   - Delete the cluster: `minikube delete`
@@ -481,12 +509,12 @@ Docs: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespac
 Interface and make it easier to setup or use Kubernetes.
 
 - `kubectl`
-    - Main method for Kubernetes
+    - Main method for Kubernetes interaction
 
 - `kubeadm`
     - Quickly and easily install and setup Kubernetes cluster
 
-- `minicube`
+- `minikube`
     - Allows to automatically set up local single-node Kubernetes cluster
     - Great for quick development purposes
     - Can add nodes
@@ -513,6 +541,8 @@ Interface and make it easier to setup or use Kubernetes.
 
 ## Safely Draining a Node
 
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/
+
 When performing maintenance, you may sometimes need to remove a Kubernetes node from service/cluster.
 This allows all applications on the cluster to run without any interruptions.
 Containers will gracefully terminated.
@@ -531,7 +561,11 @@ These commands are run on the control plane node.
 
 ## Upgrading Kubernetes and Tools
 
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
+
 ### Control Plane Node
+
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/#upgrading-control-plane-nodes
 
 1. Drain node, putting it out of cluster service
     - `kubectl drain <CONTROL PLANE NODE NAME> --ignore-daemonsets`
@@ -561,6 +595,8 @@ These commands are run on the control plane node.
 
 ### Worker Node
 
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/#upgrade-worker-nodes
+
 1. Drain node, putting it out of cluster services
     - **This command is run on the control plane node**
     - `kubectl drain <WORKER NODE NAME> --ignore-daemonsets --force`
@@ -584,6 +620,8 @@ These commands are run on the control plane node.
 
 
 ## Backing up and Restoring `etcd` Cluster Data
+
+Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
 
 `etcd` is the backend key-value data storage solution for Kubernetes cluster.
 All Kubernetes objects, applications, and configurations are stored in etcd.
@@ -624,7 +662,9 @@ Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd
     - `--cert`: `--cert-file` -> `/path/to/file/<SOMETHING>.crt`
     - `--key`: `--key-file` -> `/path/to/file/<SOMETHING>.key`
 - Verify database snapshot
-    - `etcdctl --write-out=table snapshot status /home/me/etcd_backup.db`
+    - ```bash
+      etcdctl --write-out=table snapshot status /home/me/etcd_backup.db
+      ```
 
 
 ## Restore `etcd` Database
@@ -636,7 +676,9 @@ Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd
 - Remove existing `etcd` database
     - `sudo rm -rf /var/lib/etcd`
 - Creates a new logical cluster
-- `etcdctl snapshot restore <FILE NAME>`
+- ```bash
+  etcdctl snapshot restore <SNAPSHOT FILE NAME>
+  ```
 - Example:
     - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
 - Set ownership
@@ -790,8 +832,8 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
         apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         metadata:
-          name: read-pods       # <-- Has to match the Role metadata.name
-          namespace: default
+          name: read-pods
+          namespace: default    # <-- Must be in the same namespace as Role
         subjects:               # <-- You can specify more than one "subject"
         - kind: User
           name: jane            # <-- "name" is case sensitive
@@ -805,7 +847,7 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 
 ### ClusterRoleBinding
 
-- To bind a ClusterRole to all namespaces, use ClusterRoleBinding
+- To bind a ClusterRole to **all namespaces**, use `ClusterRoleBinding`
 
 
 
@@ -904,17 +946,18 @@ Docs: https://kubernetes.io/docs/reference/access-authn-authz/certificate-signin
 
 3. Create a CertificateSigningRequest kubernetes resource
   - ```yaml
-    apiVersion: certificates.k8s.io/v1
-    kind: CertificateSigningRequest
-    metadata:
-      name: my-user              # <-- User this aplies to
-    spec:
-      request: <BASE64 ENCRYPTED VALUE OF .csr FILE> 
-      signerName: kubernetes.io/kube-apiserver-client
-      expirationSeconds: 86400   # <-- 24 hours in seconds
-      usages:
-      - client auth              # < -- Must abe this value
+      apiVersion: certificates.k8s.io/v1
+      kind: CertificateSigningRequest
+      metadata:
+        name: my-user              # <-- User this aplies to
+      spec:
+        request: <BASE64 ENCRYPTED VALUE OF .csr FILE> 
+        signerName: kubernetes.io/kube-apiserver-client
+        expirationSeconds: 86400   # <-- 24 hours in seconds
+        usages:
+        - client auth              # < -- Must abe this value
     ```
+
 4. Create the CertificateSigningRequest resource
   - `kubectl create -f my-user-csr.yaml`
 
@@ -942,7 +985,7 @@ Passing dynamic values to running applications/containers at runtime
 - Docs: https://kubernetes.io/docs/concepts/configuration/configmap/
 - Store *non-confidential* data in key-value pair format
 - Not designed for large data (1MB max)
-- Pods and ConfigMaps must be in the same namespace
+- Pods and ConfigMaps must be in the **same namespace**
 - Multiple pods can reference the same ConfigMap
 - Updates to ConfigMaps reflect in pod that consume it
     - Note: ConfigMaps consumed as env. vars are not updated automatically (require pod restart)
@@ -980,11 +1023,11 @@ Passing dynamic values to running applications/containers at runtime
                   containers:
                     - ...
                       env:
-                        - name: MY_ENV_VAR        # <-- Visible env. var in container
+                        - name: MY_ENV_VAR       # <-- Visible env. var in container
                           valueFrom:
                             configMapKeyRef:
-                              name: my-configmap  # <-- Name of ConfigMap object
-                              key: myKey          # <-- The value to read
+                              name: app-config   # <-- Name of ConfigMap object
+                              key: key1          # <-- The value to read
                 ...
                ```
     2. **Container command-line arguments**
@@ -999,7 +1042,7 @@ Passing dynamic values to running applications/containers at runtime
                   volumes:
                     - name: config-vol
                       configMap:
-                        name: my-configmap
+                        name: app-config
                       ...
               ```
 
@@ -1033,7 +1076,7 @@ Passing dynamic values to running applications/containers at runtime
             password: sd89sdfh/sd9f==         # <-- base64 encoded text
         immutable: false                      # <-- Default value is false
        ```
-- Can load a secret from a file with declarative command
+- Can load a secret from a file with imperative command
     - `kubectl create secret generic my-secret --from-file <LOCAL FILENAME>`
 
 
@@ -1105,7 +1148,7 @@ Docs: https://kubernetes.io/docs/tasks/configure-pod-container/configure-livenes
         ...
         spec:
           containers:
-          - name: liveness
+          - name: my-container
             ...
             livenessProbe:
               exec:                   # <-- exec type check
@@ -1219,7 +1262,7 @@ network and storage. Containers can interact with each other.
                       mountPath: /input    # <-- Mounted here in container
             volumes:
               - name: sharedvol            # <-- The volume that is shared
-                emptyDir: {}
+                emptyDir: {}               # <-- Temp volume exsits only for life of Pod
       ```
 
 
@@ -1348,18 +1391,18 @@ Docs: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-tolerati
 - **Tolleration** on Pods
   - A pod can overcome a node taint by tollerating the node taint
   - ```yaml
-    apiVersion: v1
-    kind: Pod
-    metadata:
-      ...
-    spec:
-      containers:
+      apiVersion: v1
+      kind: Pod
+      metadata:
         ...
-      tolerations:
-        - key: "my-key"           # <-- Matching taint key
-          operator: "Equal"       # <-- Operator can be "Equal" or "Exists"
-          value: "my-value"       # <-- If operator is "Equal", value is needed
-          effect: "NoSchedule"    # <-- Node taint effect to tollerate
+      spec:
+        containers:
+          ...
+        tolerations:
+          - key: "my-key"           # <-- Matching taint key
+            operator: "Equal"       # <-- Operator can be "Equal" or "Exists"
+            value: "my-value"       # <-- If operator is "Equal", value is needed
+            effect: "NoSchedule"    # <-- Node taint effect to tollerate
     ```
 
 
@@ -1524,6 +1567,7 @@ Docs: https://www.ibm.com/docs/en/cloud-private/3.1.2?topic=networking-kubernete
 - Set of standards that define how networking between Pods behaves
 - Variety of this model implementation
     - Calico network plugin
+    - Flannel network plugin
 - Define how pods communicate with each other
 - Each pod has its own unique IP address within the cluster, even in a different node!
     - A pod can reach any other pod using pod's IP
@@ -1541,7 +1585,7 @@ Docs: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/
 - Plugins will depend on specific situation
 - Each plugin installation process may differ
 - Nodes will remain in `NotReady` state until a network plugin is installed
-- Example network plugin installation
+- Example network plugin installation (Calico)
     - `kubectl apply -f <LOCAL FILE OR REMOTE URL YAML>`
     - `kubectl apply -f https://docs.projectcalico.org/manifests/calico-typha.yaml`
 
@@ -1628,7 +1672,7 @@ Docs: https://kubernetes.io/docs/concepts/services-networking/network-policies/
 
 - Network is not set up
     - **ISSEUS**:
-        - Cluster Notes status is `NotRead` network is not set up
+        - Cluster Notes status is `NotReady` network is not set up
         - Pod `IP` is `<none>`and/or `STATUS` is `Pending`, network is not set up
         - `kubectl describe node <NODE NAME>` shows event of `Starting kube-proxy`
         - `kubectl get pods -n kube-system` shows no network plugin pod (ie. `calico*`)
@@ -1951,10 +1995,12 @@ Various volumes types support storage methods such as:
                     path: /data     # <-- Name where volume is mounted
                     type: Directory
           ```
+
 - `emptyDir: {}`
     - Directory that exists only as long as the Pod exists on the Node
     - Directory and its data are deleted when Pod is removed
     - Useful for simply sharing data between containers in same Pod
+
 - `configMap`
     - Inject configuration data into pods
     - Provide ConfigMaps name in the volume section
@@ -1977,9 +2023,9 @@ Various volumes types support storage methods such as:
 
 - Allows treating storage as an abstract resource.
 - References Order:
-    - **Pod -> PersistentVolumeClaim -> PersistentVolume -> StorageClass -> External Storage**
+    - **Pod -> PersistentVolumeClaim -> *PersistentVolume -> StorageClass -> External Storage**
     - Define/Create in reverse!
-    - Note, if StorageClass is defined, PersistentVolume can be dynamically allocated and does
+    - `*` - Note, if StorageClass is defined, PersistentVolume can be dynamically allocated and does
       not have to be defined.
 
 ### StorageClass (sc)
@@ -1989,7 +2035,7 @@ Docs: https://kubernetes.io/docs/concepts/storage/storage-classes/
 - Allows admins to specify types of storage services offered on their platform
 - **When specifying a StorageClass, a PersistentVolume does not need to be specified,
   PersistentVolumes are automatically created by the StorageClass**
-  - PersistentVolumeClaims can reference a StorageClass and automatically create a PersistantVolume
+  - PersistentVolumeClaims can reference a StorageClass and dynamically create a PersistantVolume
 - Different `parameters` may be accepted depending on the `provisioner`
     - Example: For provisioner `kubernetes.io/aws-ebs` we can have the following
         - ```yaml
@@ -2061,9 +2107,9 @@ Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 
 - Request for storage by a user.
 - PersistentVolumeClaims consume and bind to PersistentVolume resources
-- **NOTE: PersistentVolumeClaim must be in the same namespace as the pod using it**
+- **NOTE: PersistentVolumeClaim must be in the same namespace as the Pod using it**
 - References Order:
-    - **Pod -> PersistentVolumeClaim -> PersistentVolume -> StorageClass -> External Storage**
+    - **Pod -> PersistentVolumeClaim -> *PersistentVolume -> StorageClass -> External Storage**
     - Define/Create in reverse!
 - Claims can request specific storage size and access modes
 - PersistentVolume and PersistentVolumeClaims are bound
@@ -2157,10 +2203,15 @@ Docs: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 
 Can check logs for Kubernetes related services on each node using `journalctl`
 
-- `sudo journalctl -u kubelet`
-- `sudo journalctl -u docker`
+- `sudo journalctl -uf kubelet`
+- `sudo journalctl -uf docker`
 
-`SHIFT-g` to jump to the end of logs
+Notes:
+
+- `sudo` - Ensure to run command as root
+- `-u` - Show messages for specified systemd unit pattern
+- `-f` - Show latest logs and continously update
+- `SHIFT-g` - Keyboard shortcut to jump to the end of logs
 
 
 ## Cluster Component Logs
@@ -2171,8 +2222,11 @@ Kubernetes cluster components have log output redirected to `/var/log`
 - `/var/log/kube-scheduler.log`
 - `/var/log/kube-controller-manager.log`
 
-Note, `kubeadm` clusters may not have these components because components run inside container.
-In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
+**NOTE:** `kubeadm` clusters may not have these components because components run inside container.
+In that case, access with the following:
+    - ```bash
+        kubectl logs -n kube-system <SYSTEM POD NAME>
+       ```
 
 
 ## Application Issues
@@ -2185,7 +2239,7 @@ In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
     - `kubectl exec <POD NAME> -c <CONTAINER NAME> -- <COMMAND>`
 
 3. Interactive shell inside the pod container
-    - `kubectl exec <POD NAME> -c <CONTAINER NAME> -i -t -- sh`
+    - `kubectl exec <POD NAME> -c <CONTAINER NAME> -it -- sh`
 
 4. Get container logs
     - `kubectl logs <POD NAME> -c <CONTAINER NAME>`
@@ -2261,6 +2315,7 @@ In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
 
 - Can edit an active resource object using `kubectl edit <RESOURCE TYPE> <RESOURCE NAME>`
     - Will open a text editor (ie. VIM)
+    - Will update the resource when file is saved
     - Example: `kubectl edit deployment my-deployment`
     - Example: `kubectl edit networkpolicy -n some-namespace my-networkpolicy`
 
@@ -2294,7 +2349,85 @@ In that case, access with `kubectl logs <COMPONENT POD> -n kube-system`
         - Response shows the DNS entry for that IP address
 
 - Get specific field form YAML output using `yq`
+    - Probably want to use `jq` with `-o json` or straigh build-in JSONPath with `-o jsonpath`
     - `<COMMAND> -o yaml | yq r - <TOP LEVEL KEY>.<SUB KEY>.<SO ON>`
     - Example:
         - `kubectl get secret credentials -n demo -o yaml | yq r - data.password`
         - Note, in this case for secret, need `| base64 -d`
+
+
+# JSONPath
+
+Docs: https://kubernetes.io/docs/reference/kubectl/jsonpath/
+
+Docs: https://dev.to/downey/how-to-make-kubectl-jsonpath-output-on-separate-lines-52bm
+
+JSONPath is useful when trying to extract specific information from the information return by the
+`kubectl` command. 
+
+## Example 1: Get Single Value
+
+- `kubectl get nodes minikube-m02` will give something like:
+    - ```txt
+      NAME           STATUS   ROLES    AGE    VERSION
+      minikube-m02   Ready    <none>   142m   v1.23.3
+      ```
+- Complete information about that node can shown with `kubectl get nodes minikube-m02 -o json`
+    - ```json
+        {
+            "apiVersion": "v1",
+            "kind": "Node",
+            "metadata": {
+                "annotations": {
+                    "kubeadm.alpha.kubernetes.io/cri-socket": "/var/run/dockershim.sock",
+                    "node.alpha.kubernetes.io/ttl": "0",
+                    "volumes.kubernetes.io/controller-managed-attach-detach": "true"
+                },
+                "creationTimestamp": "2022-04-28T13:34:34Z",
+                "labels": {
+                    "beta.kubernetes.io/arch": "amd64",
+                    "beta.kubernetes.io/os": "linux",
+
+            <----- SNIP ----- >
+
+                        "sizeBytes": 682696
+                    }
+                ],
+                "nodeInfo": {
+                    "architecture": "amd64",
+                    "bootID": "b44856c4-a1ef-4cf8-8319-9f95b2131580",
+                    "containerRuntimeVersion": "docker://20.10.12",
+                    "kernelVersion": "5.4.72-microsoft-standard-WSL2",
+                    "kubeProxyVersion": "v1.23.3",
+                    "kubeletVersion": "v1.23.3",
+                    "machineID": "b6a262faae404a5db719705fd34b5c8b",
+                    "operatingSystem": "linux",
+                    "osImage": "Ubuntu 20.04.2 LTS",
+                    "systemUUID": "b6a262faae404a5db719705fd34b5c8b"
+                }
+            }
+        }
+      ```
+
+- To only get the the node `apiVersion` you can apply JSONPATH to the output
+    - Command:
+        - ```bash
+          kubectl get nodes minikube-m02 --output jsonpath="{.apiVersion}"
+          ```
+    - Output:
+        - ```txt
+          v1
+          ```
+
+- To only get the value of `status.nodeInfo.osImage`
+    - Command:
+        - ```bash
+          kubectl get nodes minikube-m02 --output jsonpath="{.apiVersion.nodeInfo.osImage}"
+          ```
+    - Output:
+        - ```txt
+          Ubuntu 20.04.2 LTS
+          ```
+
+- Note, to add a new line at the end of the output add `{'\n'}` to the JSONpath
+    - Example: `--output jsonpath="{.apiVersion.nodeInfo.osImage}{'\n'}"`
