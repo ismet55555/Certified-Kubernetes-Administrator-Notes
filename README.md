@@ -2435,7 +2435,7 @@ JSONPath is useful when trying to extract specific information from the informat
     - Example: `--output jsonpath="{.apiVersion.nodeInfo.osImage}{'\n'}"`
 
 
-# Example 2: Get Values From Multiple Resources
+## Example 2: Get Values From Multiple Resources
 
 - `kubectl get nodes` will give something like:
     - ```txt
