@@ -109,7 +109,7 @@
 - [Tips and Tricks](#tips-and-tricks)
 - [JSONPath](#jsonpath)
   - [Example 1: Get Single Value](#example-1-get-single-value)
-- [Example 2: Get Values From Multiple Resources](#example-2-get-values-from-multiple-resources)
+  - [Example 2: Get Values From Multiple Resources](#example-2-get-values-from-multiple-resources)
     - [`--output custom-columns`](#-output-custom-columns)
 
 <!-- /code_chunk_output -->
