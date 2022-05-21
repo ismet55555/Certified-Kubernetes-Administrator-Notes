@@ -109,6 +109,8 @@
 - [Tips and Tricks](#tips-and-tricks)
 - [JSONPath](#jsonpath)
   - [Example 1: Get Single Value](#example-1-get-single-value)
+- [Example 2: Get Values From Multiple Resources](#example-2-get-values-from-multiple-resources)
+    - [`--output custom-columns`](#-output-custom-columns)
 
 <!-- /code_chunk_output -->
 
@@ -221,7 +223,7 @@ Make sure you know the basics for `tmux` usage:
 - ... More (if needed): https://gist.github.com/ismet55555/f78cecaab16d7a0acf786ab6b11c7d56
 
 
-
+G
 ## Preperation
 
 ### Study Resources
@@ -2429,5 +2431,80 @@ JSONPath is useful when trying to extract specific information from the informat
           Ubuntu 20.04.2 LTS
           ```
 
-- Note, to add a new line at the end of the output add `{'\n'}` to the JSONpath
+- **TIP:** To add a new line at the end of the output add `{'\n'}` to the JSONpath
     - Example: `--output jsonpath="{.apiVersion.nodeInfo.osImage}{'\n'}"`
+
+
+# Example 2: Get Values From Multiple Resources
+
+- `kubectl get nodes` will give something like:
+    - ```txt
+        NAME           STATUS   ROLES                  AGE     VERSION
+        minikube       Ready    control-plane,master   23d     v1.23.3
+        minikube-m02   Ready    <none>                 6h32m   v1.23.3
+        minikube-m03   Ready    <none>                 6h32m   v1.23.3
+      ```
+- Complete information about that node can shown with `kubectl get nodes -o json`
+    - ```json
+        {
+            "apiVersion": "v1",
+            "items": [
+                {
+                    "apiVersion": "v1",
+                    "kind": "Node",
+                    "metadata": {
+                        "annotations": {
+
+                    <----- SNIP ----- >
+
+                },
+                {
+                    "apiVersion": "v1",
+                    "kind": "Node",
+                    "metadata": {
+                        "annotations": {
+
+                    <----- SNIP ----- >
+
+                },
+                {
+                    "apiVersion": "v1",
+                    "kind": "Node",
+                    "metadata": {
+                        "annotations": {
+
+                    <----- SNIP ----- >
+
+                }
+            ]
+        }
+      ```
+
+- To only get the the node `apiVersion` for all three nodes you can apply JSONPATH to the output
+    - Command:
+        - ```bash
+          kubectl get nodes minikube-m02 --output jsonpath="{.items[*].metadata.creationTimestamp}"
+          ```
+    - Output:
+        - ```txt
+          2022-04-28T13:34:34Z 2022-05-21T14:26:26Z 2022-05-21T14:26:33Z
+          ```
+
+### `--output custom-columns`
+
+Docs: https://kubernetes.io/docs/reference/kubectl/#custom-columns
+
+To be fancy you also use `--output custom-columns` to nicely output information:
+
+- **IMPORTANT:** The `.items[*]` used in JSONPath is not needed, it will grab all items by default
+- Command:
+    - ```bash
+        kubectl get nodes -o custom-columns="OS_IMAGE:{.status.nodeInfo.osImage},IP_ADDRESS:{.status.addresses[0].address}"
+        ```
+- Output:
+    - ```txt
+        OS_IMAGE             IP_ADDRESS
+        Ubuntu 20.04.2 LTS   192.168.49.2
+        Ubuntu 20.04.2 LTS   192.168.49.3
+        Ubuntu 20.04.2 LTS   192.168.49.4
+        ```
