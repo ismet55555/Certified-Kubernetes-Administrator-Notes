@@ -187,7 +187,7 @@ The exam will have VIM or nano terminal text editor tools available. If you are 
 VIM ensure that you create a `~/.vimrc` file and add the following:
 
 ```vimrc
-set ts=4             " <-- tabstop - how many spaces is \t worth
+set ts=2             " <-- tabstop - how many spaces is \t worth
 set sw=2             " <-- shiftwidth - how many spaces is indentation
 set et               " <-- expandtab - Use spaces, never \t values
 set ai               " <-- autoindent - VIM knows where to indent
@@ -312,16 +312,10 @@ These steps must be done outside of `tmux`
 - `kubeadm`
     - Tool that will simply the process of setting up our Kubernetes cluster
     - Can be used to set up multi-node Kubernetes cluster
+
 - `kubectl`
     - Controls the Kubernetes cluster
     - Communicates with the control plane
-- `kubelet` 
-    - Primary node agent that runs on each Kubernetes node
-    - Can register node with the API server
-    - Applies, creates, updates, and destroys containers on a node
-    - CAN BE USED BY ITSELF AS CLI TOOL??
-- More ...
-    - HYPERLINK ???
 
 
 # Installation
@@ -454,6 +448,8 @@ Run the following command on each Kubernetes node. Make sure to run as `sudo`
 
 
 ## `minikube` Cluster
+
+Docs: https://minikube.sigs.k8s.io/docs/
 
 `minikube` is local Kubernetes, focusing on making it easy to learn and develop for Kubernetes.
 `minikube` allows you set up a local kubernetes cluster with one or many nodes. Each node is 
@@ -663,7 +659,9 @@ All Kubernetes objects, applications, and configurations are stored in etcd.
     - `etcdctl get <KEY>` - Get a specific value for a key
     - `etcdctl --endpoints=$ENDPOINTS endpoint health` - Check all `etcd` endpoint health
 
-- etcd typically runs on port `2379`
+- `etcd` typically runs on port `2379`
+
+- `etcd` could either be running as a *system service* or as a *kubernetes pod*
 
 - **Important:** Set environmental variable for `etcd` version
     - `export ETCDCTL_API=3`
@@ -684,6 +682,10 @@ Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd
       --cacert=/path/to/file/ca.crt
 
   - For `--endpoints`, can be IP, or DNS name
+    - Can find the `etcd` endpoint by looking at `etcd` service or running pod
+    - **If pod:** `kubectl get pod -n kube-system etcd-pod-name -o yaml`
+        - spec.containers.command -> `--listen-clinet-urls`
+    - **If service:** `systemctl status etcd`
 
   - For HTTP communication `--cert`, `--key`, and `--cacert` are not needed
 
@@ -702,8 +704,8 @@ Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd
 Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster
 
 - Stop `etcd` service
-    - `sudo systemctl stop etcd`
-    - Note: You could also stop all cluster activity by moving all manifest files
+    - **If service:** `sudo systemctl stop etcd`
+    - **If pod:** Stop all cluster activity by moving all static pod manifest files
         1. `ssh` into the cluster node
         2. Go to manifest directory, typically `/etc/kubernetes/manifests`
         3. Create a directory to move files to: `mkdir -p ../backup`
