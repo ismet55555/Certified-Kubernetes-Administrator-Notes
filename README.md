@@ -14,6 +14,7 @@
     - [Terminal Command Completion](#terminal-command-completion)
     - [VIM](#vim)
     - [`tmux`](#tmux)
+      - [Mouse Support (Optional)](#mouse-support-optional)
   - [Preperation](#preperation)
     - [Study Resources](#study-resources)
     - [Practice](#practice)
@@ -157,12 +158,16 @@ alias kc-dry='kubectl create --dry-run=client -o yaml  # <-- Create a YAML templ
 
 alias kr='kubectl run'                                 # <-- Run/Create a resource (typically pod)
 alias kr-dry='kubectl run --dry-run=client -o yaml     # <-- Create a YAML template of resource
+
+# If kc-dry and kr-dry do not autocomplete, add the following
+export do="dry-run=client -o yaml"                     # <-- Create the YAML tamplate (usage: $do)
 ```
 
 The following are some example usages:
   - `k get nodes -o wide`
   - `kc deploymentmy my-dep --image=nginx --replicas=3`
   - `kr-dry my-pod --image=nginx --command sleep 36000`
+  - `kr-dry --image=busybox -- "/bin/sh" "-c" "sleep 36000"`
 
 
 ### Terminal Command Completion
@@ -222,8 +227,29 @@ Make sure you know the basics for `tmux` usage:
 - `CTRL + d` or `exit` - Close a window pane
 - ... More (if needed): https://gist.github.com/ismet55555/f78cecaab16d7a0acf786ab6b11c7d56
 
+#### Mouse Support (Optional)
 
-G
+If you want to be able to click and select within tmux and tmux panes, you can also enable
+mouse support. This can be useful.
+
+These steps must be done outside of `tmux`
+
+1. Create a `.tmux.conf` file and edit it
+    - `vim ~/.tmux.conf`
+
+2. Add the configuration, save, and exit file
+    - `set -g mouse on`
+
+3. Reload tmux configuration
+    - `tmux source .tmux.conf`
+
+
+
+
+
+
+
+
 ## Preperation
 
 ### Study Resources
@@ -237,8 +263,10 @@ G
 - [Play with Kubernetes](https://labs.play-with-k8s.com/)
 - [killer.sh Practice questions and environment](https://killer.sh/cka)
 - [Practice questions YouTube series](https://youtu.be/uSbqo4X9Zoo)
+- [CKA Excample Questions](https://levelup.gitconnected.com/kubernetes-cka-example-questions-practical-challenge-86318d85b4d)
 - [GitHub gist of parctive questions](https://gist.github.com/texasdave2/8f4ce19a467180b6e3a02d7be0c765e7)
 - [CKAD-Practice-Questions](https://github.com/bbachi/CKAD-Practice-Questions)
+- [More CKAD-Practice-Questions](https://github.com/dgkanatsios/CKAD-exercises)
 
 
 
@@ -675,18 +703,28 @@ Docs: https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd
 
 - Stop `etcd` service
     - `sudo systemctl stop etcd`
+    - Note: You could also stop all cluster activity by moving all manifest files
+        1. `ssh` into the cluster node
+        2. Go to manifest directory, typically `/etc/kubernetes/manifests`
+        3. Create a directory to move files to: `mkdir -p ../backup`
+        4. Move all directory contents: `mv ./* ../backup`
+
 - Remove existing `etcd` database
     - `sudo rm -rf /var/lib/etcd`
+
 - Creates a new logical cluster
-- ```bash
-  etcdctl snapshot restore <SNAPSHOT FILE NAME>
-  ```
-- Example:
-    - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
+    - ```bash
+       etcdctl snapshot restore <SNAPSHOT FILE NAME>
+      ```
+    - Example:
+        - `etcdctl --endpoints https://etcd1:2379 snapshot restore snapshotdb`
+
 - Set ownership
     - `sudo chown -R etcd:etcd /var/lib/etcd`
+
 - Start etcd
     - `sudo systemctl start etcd`
+    - If manifests file wree moved initially, move them back: `mv /etc/kubernetes/backup/* /etc/kubernetes/manifests/`
 
 
 
@@ -910,6 +948,9 @@ are authenticated a Service Accounts.
           name: build-robot
         automountServiceAccountToken: false
       ```
+
+- Service account tokens and certificats are stored within a pod in this directory:
+    - `/var/run/kubernetes.io/serviceaccount`
 
 
 ## Inspecting Resource Usage
@@ -1590,6 +1631,8 @@ Docs: https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/
 - Example network plugin installation (Calico)
     - `kubectl apply -f <LOCAL FILE OR REMOTE URL YAML>`
     - `kubectl apply -f https://docs.projectcalico.org/manifests/calico-typha.yaml`
+
+>> By default kubelet looks into `/etc/cni/net.d` to discover the CNI plugin
 
 
 ## Domain Name System (DNS) in Kubernetes
@@ -2357,6 +2400,24 @@ In that case, access with the following:
         - `kubectl get secret credentials -n demo -o yaml | yq r - data.password`
         - Note, in this case for secret, need `| base64 -d`
 
+- Count the number of lines of output with `<COMMAND> | wc -l`
+    - Example: Count the number of pods in a namespace
+        - `kubectl get pod --namespace my-namespace | wc -l`
+
+- To view information for a certificat
+    - Docs: https://kubernetes.io/docs/tasks/administer-cluster/certificates/#openssl
+    - This can be useful to view certificate information
+    - Certificate can be in:
+        - /etc/kubernetes/pki
+        - `ps aux | grep kubelet` -> `--cert-dir` -> `pki`
+    - Certificate Signing Request Info: `openssl req  -noout -text -in ./server.csr`
+    - Certificate: `openssl x509  -noout -text -in ./server.crt`
+
+- Reach the kubernetes API without kubectl
+    - May be reachable from a pod given the right service account attached
+    - `curl https://kubernetes.default`
+    - Ignore insecure connections: `curl -k https://kubernetes.default`
+    - Specific endpoint:  `curl -k https://kubernetes.default/api/v1/secretes`
 
 # JSONPath
 
