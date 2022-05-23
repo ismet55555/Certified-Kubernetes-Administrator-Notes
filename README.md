@@ -69,6 +69,7 @@
     - [`nodeSelector`](#nodeselector)
     - [`nodeName`](#nodename)
     - [Taints and Tollerations](#taints-and-tollerations)
+    - [Affinity](#affinity)
   - [DaemonSets (ds)](#daemonsets-ds)
   - [Static Pods](#static-pods)
 - [Deployments](#deployments)
@@ -1450,6 +1451,11 @@ Docs: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-tolerati
             effect: "NoSchedule"    # <-- Node taint effect to tollerate
     ```
 
+### Affinity
+
+Docs: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+
+**TODO**
 
 
 ## DaemonSets (ds)
