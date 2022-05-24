@@ -1,6 +1,6 @@
 <p align="center"><img width="300" alt="portfolio_view" src="logo.png"></p>
 <h4 align="center"><a href="https://www.cncf.io/certification/cka/">https://www.cncf.io/certification/cka/</a></h3>
-<h1 align="center">Certified Kubernetes Administrator Notes</h1>
+<h1 align="center">Certified Kubernetes Administrator (CKA) Notes</h1>
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
