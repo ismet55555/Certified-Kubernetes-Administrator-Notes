@@ -138,7 +138,7 @@
     - `jq` - Working with JSON format
     - `yq` - Working with YAML format
     - `base64` - Tool to convert to and from base 64
-    - more ...
+    - more typical linux tools like `grep`, `wc` ...
 
 
 ## Exam Environment Setup
@@ -165,10 +165,14 @@ export do="dry-run=client -o yaml"                     # <-- Create the YAML tam
 ```
 
 The following are some example usages:
-  - `k get nodes -o wide`
-  - `kc deploymentmy my-dep --image=nginx --replicas=3`
-  - `kr-dry my-pod --image=nginx --command sleep 36000`
-  - `kr-dry --image=busybox -- "/bin/sh" "-c" "sleep 36000"`
+
+```bash
+k get nodes -o wide
+kc deploymentmy my-dep --image=nginx --replicas=3
+kr-dry my-pod --image=nginx --command sleep 36000
+kr-dry --image=busybox -- "/bin/sh" "-c" "sleep 36000"
+kr --image=busybox -- "/bin/sh" "-c" "sleep 36000" $do
+```
 
 
 ### Terminal Command Completion
@@ -191,17 +195,16 @@ VIM ensure that you create a `~/.vimrc` file and add the following:
 set ts=2             " <-- tabstop - how many spaces is \t worth
 set sw=2             " <-- shiftwidth - how many spaces is indentation
 set et               " <-- expandtab - Use spaces, never \t values
-set ai               " <-- autoindent - VIM knows where to indent
 set mouse=a          " <-- Enable mouse support
 ```
 
 Or simply:
 
 ```vimrc
-set ts=2 sw=2 et ai mouse=a
+set ts=2 sw=2 et mouse=a
 ```
 
-Also know VIM basics:
+Also know VIM basics are as follows. Maybe a good idea to take a quick VIM course.
 
 - `vim my-file.yaml` - If file exists, open it, else create it for editing
 - `:w` - Save
@@ -225,6 +228,7 @@ Make sure you know the basics for `tmux` usage:
 - `CTRL + b  %` - Split the window horizontally (line is vertical)
 - `CTRL + b  <ARROW KEY>` - Switch between window panes
 - `CTRL + b (hold)  <ARROW KEY>` - Resize current window pane
+- `CTRL + b  z` - Toggle full terminal/screen a pane (good for looking at a full document)
 - `CTRL + d` or `exit` - Close a window pane
 - ... More (if needed): https://gist.github.com/ismet55555/f78cecaab16d7a0acf786ab6b11c7d56
 
