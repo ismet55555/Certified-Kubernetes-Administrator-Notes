@@ -13,6 +13,7 @@
     - [Terminal Shortcuts/Aliases](#terminal-shortcutsaliases)
     - [Terminal Command Completion](#terminal-command-completion)
     - [VIM](#vim)
+      - [Pasting Text Into VIM](#pasting-text-into-vim)
     - [`tmux`](#tmux)
       - [Mouse Support (Optional)](#mouse-support-optional)
   - [Preperation](#preperation)
@@ -222,10 +223,11 @@ into a VIM terminal. If you simply do that, the tabs will do funky things.
 
 Do the following inside VIM before pasting your copied text:
 
-- In `NORMAL` mode, type: `:set paste`
-- Now enter `INSERT` mode
-- Paste the text
-  - Can right click with mouse and select Paste or `CTRL + SHIFT + v` 
+1. In `NORMAL` mode, type: `:set paste`
+2. Now enter `INSERT` mode
+  - You should see `-- INSERT (paste) --` at the bottom of the screen
+3. Paste the text
+  - You can right click with mouse and select Paste or `CTRL + SHIFT + v` 
 
 
 ### `tmux`
