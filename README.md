@@ -215,6 +215,18 @@ Also know VIM basics are as follows. Maybe a good idea to take a quick VIM cours
 - `v` - Visual mode for selection
 - `ESC` - Normal mode
 
+#### Pasting Text Into VIM
+
+Often times you will want to paste text or code from the Kubernetes documentation into
+into a VIM terminal. If you simply do that, the tabs will do funky things.
+
+Do the following inside VIM before pasting your copied text:
+
+- In `NORMAL` mode, type: `:set paste`
+- Now enter `INSERT` mode
+- Paste the text
+  - Can right click with mouse and select Paste or `CTRL + SHIFT + v` 
+
 
 ### `tmux`
 
