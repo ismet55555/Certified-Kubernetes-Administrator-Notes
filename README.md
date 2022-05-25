@@ -120,7 +120,7 @@
 
 ## Outline
 
-- https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.22.pdf
+- https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.23.pdf
 
 
 ## Software / Environment
