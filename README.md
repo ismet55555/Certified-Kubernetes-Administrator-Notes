@@ -416,7 +416,7 @@ Perform these steps on both control and worker nodes.
 
 - Install Kubernetes tools `(note the version)`
     - List of Kubernetes versions: https://kubernetes.io/releases/
-    - `sudo apt-get install -y kubelet=1.23.0-00 kubeadm=1.23.0-00 kubectl=1.23.0-00`
+    - `sudo apt-get install -y kubelet=1.30.2-1.1 kubeadm=1.30.2-1.1 kubectl=1.30.2-1.1`
     - Note: To install latest versions, omit the verison specifier (ie. `kubelet` without the `=1.23.0.00`)
 
 - Prevent automatic updating of Kubernetes packages for more control
