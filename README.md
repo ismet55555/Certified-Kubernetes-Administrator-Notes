@@ -17,7 +17,7 @@
       - [Pasting Text Into VIM](#pasting-text-into-vim)
     - [`tmux`](#tmux)
       - [Mouse Support (Optional)](#mouse-support-optional)
-  - [Preperation](#preperation)
+  - [Preparation](#Preparation)
     - [Study Resources](#study-resources)
     - [Practice](#practice)
 - [Architecture](#architecture)
@@ -70,7 +70,7 @@
   - [Pod Scheduling Configurations](#pod-scheduling-configurations)
     - [`nodeSelector`](#nodeselector)
     - [`nodeName`](#nodename)
-    - [Taints and Tollerations](#taints-and-tollerations)
+    - [Taints and Tolerations](#taints-and-Tolerations)
     - [Affinity](#affinity)
   - [DaemonSets (ds)](#daemonsets-ds)
   - [Static Pods](#static-pods)
@@ -270,7 +270,7 @@ These steps must be done outside of `tmux`
 
 
 
-## Preperation
+## Preparation
 
 ### Study Resources
 
@@ -283,8 +283,8 @@ These steps must be done outside of `tmux`
 - [Play with Kubernetes](https://labs.play-with-k8s.com/)
 - [killer.sh Practice questions and environment](https://killer.sh/cka)
 - [Practice questions YouTube series](https://youtu.be/uSbqo4X9Zoo)
-- [CKA Excample Questions](https://levelup.gitconnected.com/kubernetes-cka-example-questions-practical-challenge-86318d85b4d)
-- [GitHub gist of parctive questions](https://gist.github.com/texasdave2/8f4ce19a467180b6e3a02d7be0c765e7)
+- [CKA Example Questions](https://levelup.gitconnected.com/kubernetes-cka-example-questions-practical-challenge-86318d85b4d)
+- [GitHub gist of practice questions](https://gist.github.com/texasdave2/8f4ce19a467180b6e3a02d7be0c765e7)
 - [CKAD-Practice-Questions](https://github.com/bbachi/CKAD-Practice-Questions)
 - [More CKAD-Practice-Questions](https://github.com/dgkanatsios/CKAD-exercises)
 
@@ -1071,7 +1071,7 @@ Passing dynamic values to running applications/containers at runtime
               even_more: more data
           key4: |
             You can have
-            mulit-line
+            multi-line
             data.
           key5.blah: |               # <-- File-like keys
             yo.cool=something
@@ -1428,9 +1428,9 @@ In Kubernetes, scheduling refers to making sure that Pods are matched to Nodes s
     - `kubectl get nodes`
 
 
-### Taints and Tollerations
+### Taints and Tolerations
 
-Taints applied to a node allow a node to repel a set of pods. Tollerations applied 
+Taints applied to a node allow a node to repel a set of pods. Tolerations applied 
 to pods allow pods to be scheduled onto nodes with matching taints. (Think pods tollerate a taint)
 
 Docs: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
