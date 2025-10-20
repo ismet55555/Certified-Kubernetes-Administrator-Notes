@@ -597,7 +597,7 @@ These commands are run on the control plane node.
 
 - Draining a node
     - `kubectl drain <NODE NAME>`
-    - `--igrnoe-daemonsets` - Ignore DaemeonSets pods tied to node
+    - `--ignore-daemonsets` - Ignore DaemeonSets pods tied to node
     - `--force` - Ignore error messages such as DaemonSet-managed pods
 
 - After maintenance is complete, allow pods to run on node again
